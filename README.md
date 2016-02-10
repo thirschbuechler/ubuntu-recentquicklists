@@ -6,14 +6,7 @@ This script adds recent files to the right-click on the unity-dash's launchers (
 Required: python3
 
 Installation:
-open a shell (or crtl+alt+t)
-cd ~/
-git clone https://github.com/thirschbuechler/ubuntu-recentquicklists.git
-python3 "ubuntu-recentquicklists.py" &
-exit
-
-make sure to type "exit" instead of closing the shell-window, as the latter would kill the script
-(more info: http://unix.stackexchange.com/questions/134924/i-am-using-why-isnt-the-process-running-in-the-background)
+see https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Installation
 
 Huge thanks to 
 https://forum.ubuntuusers.de/topic/libreoffice-unity-dynamische-quicklist/
