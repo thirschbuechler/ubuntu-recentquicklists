@@ -9,8 +9,7 @@ Installation:
 see https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Installation
 
 Huge thanks to 
-https://forum.ubuntuusers.de/topic/libreoffice-unity-dynamische-quicklist/
-, which provided the framework to expand the functionality from being limited to libre-office to serve all applications.
+https://forum.ubuntuusers.de/topic/libreoffice-unity-dynamische-quicklist/ (german post), which provided the framework to expand the functionality from being limited to libre-office to serve all applications.
 Also, stackexchange (in particular stackoverflow) helped a lot.
 
 Autorun
