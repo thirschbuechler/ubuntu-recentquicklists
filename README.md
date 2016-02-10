@@ -15,5 +15,6 @@ https://forum.ubuntuusers.de/topic/libreoffice-unity-dynamische-quicklist/
 Autorun
 For running in the background, i'll probably create an init.d script, as proposed here:
 http://blog.scphillips.com/posts/2013/07/getting-a-python-script-to-run-in-the-background-as-a-service-on-boot/
+I'd recommend placing the script in the "/home" folder, if you want multiple users to run it, or in the "~/" directory (equals "/home/yourusername") if you are the only one.
 
 It is crucial to call the script via "python3 script.py", not "python script.py" since it won't work if you don't.
