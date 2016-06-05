@@ -16,4 +16,4 @@ Also, stackexchange (in particular stackoverflow) helped a lot.
 
 
 
-It is crucial to call the script via "python3 script.py", not "python script.py" since it won't work if you don't.
+(Call the script via "python3 script.py", not "python script.py" since it won't work if you don't. Or just make it executable and run it, the python3-statement is included as header as well)
