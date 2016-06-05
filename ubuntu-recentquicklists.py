@@ -14,7 +14,7 @@ import log
 def debugwait():
 	input("Press Enter to continue...")
 
-log.verbose(True)
+log.verbose(False)
 #verbose would include "info"-logging
 log.create('ubuntu-recentquicklists')
 log.logging.warning('----Start-----')
@@ -85,9 +85,12 @@ def get_apps():
 						#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
 						curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
 						apps.append(curr_launcher[i])
+				else:
+						log.logging.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted, have a look at the github-wiki:compatibility-manual_adding")
+						
 
 			else:
-				log.logging.info(curr_launcher[i] + " has no MimeType- or Exec-Entry and will be omitted")
+				log.logging.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted, have a look at the github-wiki:compatibility-manual_adding")
 	return apps,mimetypes,appexecslist
 	
 
@@ -165,7 +168,9 @@ def createItem(name, location, qlnummer):
 	#log.logging.info(appexecs[qlnummer])
 	#the slash is used to escape the quotes (") meaning they are part of a string not end of a string 
 	#mixedlist.append((appexecs[qlnummer])[:-2]+"\""+location+"\"") doesn't work for kde4
-
+	
+	#some make sure every exec-line is uniform and uses %U
+	appexecs[qlnummer]=appexecs[qlnummer].replace("%F","%U")
 	head, sep, tail = appexecs[qlnummer].partition('%U')
 	mixedlist.append(head+"\""+location+"\"")
 
