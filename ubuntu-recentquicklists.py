@@ -31,6 +31,8 @@ if manager:
 else:	
 	log.logging.error("recentmanager gtk FAIL on load!!")
 
+
+#the lists are all very weird, but i'm to lazy to change it 
 mimetypes = []
 mimezsemi = []
 appexecs = []
@@ -86,11 +88,14 @@ def get_apps():
 						curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
 						apps.append(curr_launcher[i])
 				else:
-						log.logging.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted, have a look at the github-wiki:compatibility-manual_adding")
+						log.logging.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
+						log.logging.warning("have a look at the github-wiki:compatibility-manual_adding")
 						
 
 			else:
-				log.logging.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted, have a look at the github-wiki:compatibility-manual_adding")
+				log.logging.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
+				log.logging.warning("have a look at the github-wiki:compatibility-manual_adding")
+
 	return apps,mimetypes,appexecslist
 	
 
@@ -197,7 +202,7 @@ def update():
 
 	#only use files with a supported mimetype
 	for i in liste:
-		if i.exists():
+		if i.exists():#omitting that would allow deleted files to show up all the time
 			for e in range(len(mimezsemi)):
 				listex=[]
 				listex=mimezsemi[e].split(";")
@@ -208,11 +213,12 @@ def update():
 							
 
 	
+	#log.logging.warning(str(len(infoListe))+" launchers have been identified")
+	#
 	x=0
 	for y in range(len(infoListe)):			
 		x=x+len(infoListe[y])
-	log.logging.warning("now, "+str(x)+" items are good to go")			
-			
+	log.logging.warning("now, "+str(x)+" items are good to go ")			
 	#remove deleted documents
 	#issue: no call from the system if something is deleted, only when recent files changed
 	for i in range(len(infoListe)):
@@ -234,6 +240,9 @@ def update():
 
 #called on gtk_recent_manager "changed"-event
 def check_update(a):
+	initialize_launchers()#on filechanges a new/rem. launcher gets recognized
+	make_ql()#and the quicklist gets generated
+
 	for i in range(len(qlListe)):
 		for c in qlListe[i].get_children():
 			qlListe[i].child_delete(c)
@@ -241,32 +250,41 @@ def check_update(a):
 	#</check_update>
 
 
+
+
+def initialize_launchers():
+	global launcherListe, mimezsemi, appexecs, mimetypes, qlListe
+
+
+	launcherListe, mimezsemi, appexecs = evaluateapps()
+
+	mimetypes=semiarraytolist(mimezsemi)
+
+
+	if not launcherListe:
+		log.logging.warning("no Launchers found!??")
+	if not mimezsemi:
+		log.logging.warning("no mimetypes found!??")
+
+
+
+	#register quicklist
+	qlListe = []
+	for i in range(len(launcherListe)):
+		qli = Dbusmenu.Menuitem.new()
+		qlListe.append(qli)
+	#</initialize_launchers()>
+
+def make_ql():
+	global launcherListe, qlListe
+	for i in range(len(launcherListe)):
+			launcherListe[i].set_property("quicklist", qlListe[i])
+
 #--------------------------------- main commands
 
 #debugwait()
 
-
-
-#following lists are all very weird, but i'm to lazy to change it as it works,
-#knock yourself out if you please ;)
-launcherListe, mimezsemi, appexecs = evaluateapps()
-
-mimetypes=semiarraytolist(mimezsemi)
-
-
-if not launcherListe:
-	log.logging.warning("no Launchers found!??")
-if not mimezsemi:
-	log.logging.warning("no mimetypes found!??")
-
-
-
-#register quicklist
-qlListe = []
-for i in range(len(launcherListe)):
-	qli = Dbusmenu.Menuitem.new()
-	qlListe.append(qli)
-
+initialize_launchers()
 
 #update on startup
 update()
@@ -274,8 +292,7 @@ update()
 #connect the handler
 manager.connect("changed",check_update)
 
-for i in range(len(launcherListe)):
-			launcherListe[i].set_property("quicklist", qlListe[i])
+make_ql()
 
 log.logging.warning("all set, entering main loop (wait for changes)")
 
