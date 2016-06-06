@@ -187,7 +187,6 @@ def createItem(name, location, qlnummer):
 	#</createItem>
 
 def update():
-	#print("updating")
 	liste = manager.get_items()
 	log.logging.warning("updating, i've got "+str(len(liste))+"unfiltered items")
 	infoListe = []
@@ -231,7 +230,6 @@ def update():
 
 #called on gtk_recent_manager "changed"-event
 def check_update(a):
-	#print("gtk recent_manager changed: check_update")
 	for i in range(len(qlListe)):
 		for c in qlListe[i].get_children():
 			qlListe[i].child_delete(c)
@@ -253,10 +251,8 @@ mimetypes=semiarraytolist(mimezsemi)
 
 
 if not launcherListe:
-	#print("no Launchers found!??")
 	log.logging.warning("no Launchers found!??")
 if not mimezsemi:
-	#print("no mimetypes found!??")
 	log.logging.warning("no mimetypes found!??")
 
 
