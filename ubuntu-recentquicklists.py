@@ -208,7 +208,11 @@ def update():
 							
 
 	
-	log.logging.warning("now, "+str(len(liste))+"items are good to go and be added")			
+	x=0
+	for y in range(len(infoListe)):			
+		x=x+len(infoListe[y])
+	log.logging.warning("now, "+str(x)+" items are good to go")			
+			
 	#remove deleted documents
 	#issue: no call from the system if something is deleted, only when recent files changed
 	for i in range(len(infoListe)):
