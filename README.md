@@ -12,8 +12,3 @@ see https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Installation
 Huge thanks to 
 https://forum.ubuntuusers.de/topic/libreoffice-unity-dynamische-quicklist/ (german post), which provided the framework to expand the functionality from being limited to libre-office to serve all applications.
 Also, stackexchange (in particular stackoverflow) helped a lot.
-
-
-
-
-(Call the script via "python3 script.py", not "python script.py" since it won't work if you don't. Or just make it executable and run it, the python3-statement is included as header as well)
