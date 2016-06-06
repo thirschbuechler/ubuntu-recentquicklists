@@ -1,10 +1,7 @@
 # ubuntu-recentquicklists
 
-Finally, there is a recent-files quicklist for ubuntu, as windows already has got for quite some time.
-This script adds recent files to the right-click on the unity-dash's launchers (program icons).
-No more messing around with the unity menue for the last 30 or so files you've accessed and also have a launcher in your unity bar.
-
-Required: python3
+Finally, there are recent-files quicklists for Ubuntu, as Windows already has for quite some time.
+This script adds recent files (about up to 50) to the right-click on the unity-dash's launchers ("locked to launcher"-apps in taskbar).
 
 Installation & Autorun:
 see https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Installation
