@@ -32,7 +32,7 @@ else:
 	log.logging.error("recentmanager gtk FAIL on load!!")
 
 
-#the lists are all very weird, but i'm to lazy to change it 
+#lists are all very weird, but i'm to lazy to change them 
 mimetypes = []
 mimezsemi = []
 appexecs = []
@@ -240,8 +240,11 @@ def update():
 
 #called on gtk_recent_manager "changed"-event
 def check_update(a):
-	initialize_launchers()#on filechanges a new/rem. launcher gets recognized
-	make_ql()#and the quicklist gets generated
+	#initialize_launchers()#on filechanges a new/rem. launcher gets recognized
+	#make_ql()#and the quicklist gets generated
+	#manager.connect("changed",check_update)#and connected
+	#that, however, doesn't work (beyond 1-3clicks) and results in the quicklist not executing anything
+	#maybe relaunch script itself, out of itself?
 
 	for i in range(len(qlListe)):
 		for c in qlListe[i].get_children():
