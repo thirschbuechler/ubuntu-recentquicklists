@@ -2,20 +2,25 @@ from __future__ import with_statement
 import glob
 import logging
 import logging.handlers
-import sys
+import sys, os
 #http://pymotw.com/2/logging/
 #https://docs.python.org/2/howto/logging-cookbook.html
 
-#username=''
-#LOG_PATH = '/home/'+username+'/logs/'
-LOG_PATH = '/var/log/'
+username='test'
+LOG_PATH = '/home/'+username+'/'
+#LOG_PATH = '/var/log/'
+#putting it in '/var/log/' would mean trouble for multi-user systems, and
+#you'd manually create and chmod the file accordingly for your each user
 
 llevel=logging.DEBUG
 
 #create logger
 def create(logname):
 	global llevel
-	LOG_FILENAME= LOG_PATH + logname #+ '.out'
+	LOG_FILENAME= LOG_PATH + logname + '.log'
+	if os.path.isfile(LOG_FILENAME):
+		os.remove(LOG_FILENAME)#remove the old one if it exists
+
 	logging.basicConfig(filename=LOG_FILENAME,
 						level=llevel,
 						format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
