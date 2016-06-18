@@ -7,14 +7,45 @@ import configparser
 import atexit
 
 
-
 #custom logging
 import log
 
-def debugwait():
-	input("Press Enter to continue...")
 
-log.verbose(False)
+def configread():#https://docs.python.org/3/library/configparser.html
+	global maxage, logenabled
+	config = configparser.SafeConfigParser()
+	config.optionxform = lambda opt: opt#reason:
+	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
+
+
+
+	#in the following folder the actual desktop-files sit (which are queried for the exec &mimetype, anyway)
+	config.read("urq.conf")
+	if not config.has_section("General"):
+		config.add_section("General")
+
+	if not config.has_option("General","maxage"):
+		config.set("General","maxage","7")
+
+	if not config.has_option("General","logging"):
+		config.set("General","logging","False")	
+
+
+	with open('urq.conf', 'w') as configfile:
+		config.write(configfile)
+
+	#now, read stuff
+	maxage=config.getint("General","maxage")
+	logenabled=config.getboolean("General","logging")
+
+#def debugwait():
+#	input("Press Enter to continue...")
+
+
+
+#--------------------bootstrapping----------------------------------
+configread()
+log.verbose(logenabled)
 #verbose would include "info"-logging
 log.create('ubuntu-recentquicklists')
 log.logging.warning('----Start-----')
@@ -38,6 +69,9 @@ mimezsemi = []
 appexecs = []
 launcherListe = []
 mixedlist = []
+
+#max age in days
+#maxage=5
 
 
 #------------------function definitions
@@ -180,6 +214,8 @@ def createItem(name, location, qlnummer):
 	mixedlist.append(head+"\""+location+"\"")
 
 	item = Dbusmenu.Menuitem.new()
+	#head, tail = os.path.split("/tmp/d/a.dat")
+	#head, tail = os.path.split(name)#worked, but don't do it here, do it on fct call
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 	#connect the click-handler. it's the same for all entries
@@ -192,6 +228,7 @@ def createItem(name, location, qlnummer):
 	#</createItem>
 
 def update():
+	global maxage
 	liste = manager.get_items()
 	log.logging.warning("updating, i've got "+str(len(liste))+"unfiltered items")
 	infoListe = []
@@ -224,7 +261,10 @@ def update():
 	for i in range(len(infoListe)):
 		if len(infoListe[i]) != 0 :
 			for info in sort(infoListe[i]):
-				createItem(info.get_uri_display(),info.get_uri_display(),i)
+				if (info.get_age()<maxage):
+					head, tail = os.path.split(info.get_uri_display())
+					#alternatively: tail=info.get_short_name ()
+					createItem(tail, head+"/"+tail,i)
 			
 
 	#add seperators
