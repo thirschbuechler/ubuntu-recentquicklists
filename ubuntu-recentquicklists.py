@@ -5,7 +5,7 @@ from gi.repository import Unity, Gio, GObject, Dbusmenu, Gtk
 import os, subprocess, sys
 import configparser
 import atexit
-
+from gi.repository import Notify as notify#notification bubble
 
 #custom logging
 import log
@@ -55,7 +55,7 @@ log.logging.warning('----Start-----')
 def goodbye():
 	log.logging.warning('----Exit-----')
 
-#get recent manager
+#https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
 manager = Gtk.RecentManager.get_default()
 if manager:
 	log.logging.warning("recentmanager gtk module loaded")
@@ -69,6 +69,10 @@ mimezsemi = []
 appexecs = []
 launcherListe = []
 mixedlist = []
+
+notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notification
+notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists startup</b>", None).show()
+#notify.Notification.new("<b>Hello</b>", "just because..", None).show()
 
 #max age in days
 #maxage=5
@@ -191,15 +195,22 @@ def returnapplication(location):
 
 #this function gets called if something in our quicklist is clicked
 def check_item_activated(menuitem, a, location):#afaik, the def of these arguments cannot be changed
-	global mixedlist
-	process = subprocess.Popen(mixedlist[returnapplication(location)+1],shell=True)
-	
+	global mixedlist, manager
+	if os.path.exists(location):
+		process = subprocess.Popen(mixedlist[returnapplication(location)+1],shell=True)
+	else:
+		#notify.Notification.new("<b>URQ: File not found</b>", "sorry, Gtk doesn't track renamed/moved/deleted files (see gnome bug 137278: https://bugzilla.gnome.org/show_bug.cgi?id=137278)", None).show()
+		notify.Notification.new("<b>URQ: File not found</b>", "sorry, Gtk Recentmanager doesn't track renamed/moved/deleted files :(", None).show()
+		log.logging.warning("File not found: "+location)
+		#manager.remove_item(location)
+		check_update_real()
+		#a renamed file however shows up in new list??
 
 
 #create quicklist entry
 def createItem(name, location, qlnummer):
 	#log.logging.info("in function createitem")
-	global mixedlist
+	global mixedlist, qlListe
 	#remove the %U, %F or whatever of the exec path
 	#(string replace command neither likes the % nor its escaped form %%)
 	mixedlist.append(location)
@@ -228,7 +239,7 @@ def createItem(name, location, qlnummer):
 	#</createItem>
 
 def update():
-	global maxage
+	global maxage, qlListe
 	liste = manager.get_items()
 	log.logging.warning("updating, i've got "+str(len(liste))+"unfiltered items")
 	infoListe = []
@@ -278,18 +289,26 @@ def update():
 	
 	#</update>
 
-#called on gtk_recent_manager "changed"-event
-def check_update(a):
+
+def check_update_real():
 	#initialize_launchers()#on filechanges a new/rem. launcher gets recognized
 	#make_ql()#and the quicklist gets generated
 	#manager.connect("changed",check_update)#and connected
 	#that, however, doesn't work (beyond 1-3clicks) and results in the quicklist not executing anything
 	#maybe relaunch script itself, out of itself?
 
+
+	#old quicklists have to be deleted before updating, otherwise new items would be appended
 	for i in range(len(qlListe)):
 		for c in qlListe[i].get_children():
 			qlListe[i].child_delete(c)
 	update()
+	#</check_update_real>
+
+
+#called on gtk_recent_manager "changed"-event, the "a" parameter is a bit mysterious
+def check_update(a):
+	check_update_real()
 	#</check_update>
 
 
