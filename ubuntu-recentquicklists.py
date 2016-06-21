@@ -12,7 +12,7 @@ import log
 
 
 def configread():#https://docs.python.org/3/library/configparser.html
-	global maxage, logenabled
+	global maxage, logenabled, startupsplash, shortnagging
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
@@ -21,6 +21,8 @@ def configread():#https://docs.python.org/3/library/configparser.html
 
 	#in the following folder the actual desktop-files sit (which are queried for the exec &mimetype, anyway)
 	config.read("urq.conf")
+
+	#if these entries are not existant, create them with default values
 	if not config.has_section("General"):
 		config.add_section("General")
 
@@ -30,13 +32,20 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	if not config.has_option("General","logging"):
 		config.set("General","logging","False")	
 
+	if not config.has_option("General","startupsplash"):
+		config.set("General","startupsplash","True")	
+
+	if not config.has_option("General","shortnagging"):
+		config.set("General","shortnagging","False")
 
 	with open('urq.conf', 'w') as configfile:
 		config.write(configfile)
 
-	#now, read stuff
+	#now, read stuff (be it the just written defaults if there were none, or actual user settings)
 	maxage=config.getint("General","maxage")
 	logenabled=config.getboolean("General","logging")
+	startupsplash=config.getboolean("General","startupsplash")
+	shortnagging=config.getboolean("General","shortnagging")
 
 #def debugwait():
 #	input("Press Enter to continue...")
@@ -71,8 +80,8 @@ launcherListe = []
 mixedlist = []
 
 notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notification
-notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists startup</b>", None).show()
-#notify.Notification.new("<b>Hello</b>", "just because..", None).show()
+if startupsplash:
+	notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists startup</b>", None).show()
 
 #max age in days
 #maxage=5
@@ -196,13 +205,18 @@ def returnapplication(location):
 #this function gets called if something in our quicklist is clicked
 def check_item_activated(menuitem, a, location):#afaik, the def of these arguments cannot be changed
 	global mixedlist, manager
-	if os.path.exists(location):
+	if os.path.exists(location):#just open it
 		process = subprocess.Popen(mixedlist[returnapplication(location)+1],shell=True)
-	else:
-		#notify.Notification.new("<b>URQ: File not found</b>", "sorry, Gtk doesn't track renamed/moved/deleted files (see gnome bug 137278: https://bugzilla.gnome.org/show_bug.cgi?id=137278)", None).show()
-		notify.Notification.new("<b>URQ: File not found</b>", "sorry, Gtk Recentmanager doesn't track renamed/moved/deleted files :(", None).show()
+	else:#if what you wanted to open is gone
+		#https://bugzilla.gnome.org/show_bug.cgi?id=137278
+		if not shortnagging:		
+			notify.Notification.new("<b>URQ: File not found</b>", "sorry, Gtk Recentmanager doesn't track moved/deleted files. Reopen & close the file to renew its link. In case it got renamed, that happend now, so go back to the quicklist and try again", None).show()
+		else:
+			notify.Notification.new("<b>URQ: File not found</b>", "(has been renamed/moved/deleted)", None).show()
+
 		log.logging.warning("File not found: "+location)
 		#manager.remove_item(location)
+		#it got removed already, so just update the list
 		check_update_real()
 		#a renamed file however shows up in new list??
 
