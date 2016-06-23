@@ -17,7 +17,7 @@ LOG_PATH = ''
 
 
 def configread():#https://docs.python.org/3/library/configparser.html
-	global maxage, onlycritical, startupsplash, shortnagging, verboselogging
+	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
@@ -46,6 +46,9 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	if not config.has_option("General","shortnagging"):
 		config.set("General","shortnagging","False")
 
+	if not config.has_option("General","showfullpath"):
+		config.set("General","showfullpath","False")
+
 	#create missing entries with default values, if there are any
 	with open('urq.conf', 'w') as configfile:
 		config.write(configfile)
@@ -56,6 +59,7 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	verboselogging=config.getboolean("General","verboselogging")
 	startupsplash=config.getboolean("General","startupsplash")
 	shortnagging=config.getboolean("General","shortnagging")
+	showfullpath=config.getboolean("General","showfullpath")
 
 #def debugwait():
 #	input("Press Enter to continue...")
@@ -65,7 +69,6 @@ def configread():#https://docs.python.org/3/library/configparser.html
 #--------------------bootstrapping----------------------------------
 
 configread()
-
 
 
 log.verbose(verboselogging)#also display debug messages, if false: up to warning level
@@ -306,7 +309,10 @@ def update():
 				if (info.get_age()<maxage):
 					head, tail = os.path.split(info.get_uri_display())
 					#alternatively: tail=info.get_short_name ()
-					createItem(tail, head+"/"+tail,i)
+					if not showfullpath:
+						createItem(tail, head+"/"+tail,i)
+					else:
+						createItem(head+"/"+tail, head+"/"+tail,i)
 			
 
 	#add seperators
