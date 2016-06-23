@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #import time
-#time.sleep(20) # delays for x seconds
+#time.sleep(20) # delay for x seconds
 from gi.repository import Unity, Gio, GObject, Dbusmenu, Gtk
 import os, subprocess, sys
 import configparser
@@ -9,17 +9,22 @@ from gi.repository import Notify as notify#notification bubble
 
 #custom logging
 import log
+#username=''
+#LOG_PATH = '/home/'+username+'/logs/'
+#LOG_PATH = '/var/log/' #file here needs to be manually created and chown respectively
+#what the hell, just log in the same folder the script is in..
+LOG_PATH = ''
 
 
 def configread():#https://docs.python.org/3/library/configparser.html
-	global maxage, logenabled, startupsplash, shortnagging
+	global maxage, onlycritical, startupsplash, shortnagging, verboselogging
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 
-
-
-	#in the following folder the actual desktop-files sit (which are queried for the exec &mimetype, anyway)
+	
+	
+	#open the config file
 	config.read("urq.conf")
 
 	#if these entries are not existant, create them with default values
@@ -29,8 +34,11 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	if not config.has_option("General","maxage"):
 		config.set("General","maxage","7")
 
-	if not config.has_option("General","logging"):
-		config.set("General","logging","False")	
+	if not config.has_option("General","onlycritical"):
+		config.set("General","onlycritical","True")	
+
+	if not config.has_option("General","verboselogging"):
+		config.set("General","verboselogging","False")
 
 	if not config.has_option("General","startupsplash"):
 		config.set("General","startupsplash","True")	
@@ -38,12 +46,14 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	if not config.has_option("General","shortnagging"):
 		config.set("General","shortnagging","False")
 
+	#create missing entries with default values, if there are any
 	with open('urq.conf', 'w') as configfile:
 		config.write(configfile)
 
 	#now, read stuff (be it the just written defaults if there were none, or actual user settings)
 	maxage=config.getint("General","maxage")
-	logenabled=config.getboolean("General","logging")
+	onlycritical=config.getboolean("General","onlycritical")
+	verboselogging=config.getboolean("General","verboselogging")
 	startupsplash=config.getboolean("General","startupsplash")
 	shortnagging=config.getboolean("General","shortnagging")
 
@@ -53,13 +63,19 @@ def configread():#https://docs.python.org/3/library/configparser.html
 
 
 #--------------------bootstrapping----------------------------------
+
 configread()
-log.verbose(logenabled)
-#verbose would include "info"-logging
-log.create('ubuntu-recentquicklists')
+
+
+
+log.verbose(verboselogging)#also display debug messages, if false: up to warning level
+log.onlycritical(onlycritical)#turn general logging on or off, yes this has to sit below "verbose"
+
+log.set_logpath(LOG_PATH)#where to put..
+log.create('ubuntu-recentquicklists.out')#..this logfile
 log.logging.warning('----Start-----')
 
-#on registered exit try to log it:
+#on registered exit try to log the occasion
 @atexit.register
 def goodbye():
 	log.logging.warning('----Exit-----')
@@ -67,9 +83,9 @@ def goodbye():
 #https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
 manager = Gtk.RecentManager.get_default()
 if manager:
-	log.logging.warning("recentmanager gtk module loaded")
+	log.logging.info("Gtk recentmanager loaded")
 else:	
-	log.logging.error("recentmanager gtk FAIL on load!!")
+	log.logging.critical("Gtk recentmanager FAILED to load!!")
 
 
 #lists are all very weird, but i'm to lazy to change them 
@@ -79,15 +95,13 @@ appexecs = []
 launcherListe = []
 mixedlist = []
 
-notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notification
+notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
+#http://candidtim.github.io/appindicator/2014/09/13/ubuntu-appindicator-step-by-step.html
 if startupsplash:
 	notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists startup</b>", None).show()
 
-#max age in days
-#maxage=5
 
-
-#------------------function definitions
+#------------------function definitions------------------------
 
 def isEven(number):
         return number % 2 == 0
@@ -116,7 +130,8 @@ def get_apps():
 	for i in range(len(curr_launcher)):		
 		if "application://" in curr_launcher[i]:
 			#only get apps (there are other items, such as a removable drives spacer, as well)
-			#because stuff has this format http://askubuntu.com/questions/157281/how-do-i-add-an-icon-to-the-unity-dock-not-drag-and-drop/157288#157288
+			#because stuff has this format:
+			#http://askubuntu.com/questions/157281/how-do-i-add-an-icon-to-the-unity-dock-not-drag-and-drop/157288#157288
 			curr_launcher[i]=curr_launcher[i].replace("application://","")
 			#make kde4 apps work as well, yay!!
 			#here, we need to change its prefix to a folder, as in usr/share/applications it has its folder
@@ -210,7 +225,9 @@ def check_item_activated(menuitem, a, location):#afaik, the def of these argumen
 	else:#if what you wanted to open is gone
 		#https://bugzilla.gnome.org/show_bug.cgi?id=137278
 		if not shortnagging:		
-			notify.Notification.new("<b>URQ: File not found</b>", "sorry, Gtk Recentmanager doesn't track moved/deleted files. Reopen & close the file to renew its link. In case it got renamed, that happend now, so go back to the quicklist and try again", None).show()
+			text = "sorry, Gtk Recentmanager doesn't track moved/deleted files. Reopen & close the file to renew its link."
+			text = text + "In case it got renamed, that happend now, so go back to the quicklist and try again"
+			notify.Notification.new("<b>URQ: File not found</b>", text, None).show()
 		else:
 			notify.Notification.new("<b>URQ: File not found</b>", "(has been renamed/moved/deleted)", None).show()
 
@@ -246,7 +263,7 @@ def createItem(name, location, qlnummer):
 	#connect the click-handler. it's the same for all entries
 	item.connect("item-activated", check_item_activated,location)
 	if not qlListe[qlnummer].child_append(item)	:
-		log.logging.info("no dbusmenu-item was created, quicklist can't be created!")
+		log.logging.warning("dbusmenu-item %s failed to be created, quicklist can't be created!" % name)
 	
 	
 	log.logging.info("added "+location)
@@ -338,9 +355,9 @@ def initialize_launchers():
 
 
 	if not launcherListe:
-		log.logging.warning("no Launchers found!??")
+		log.logging.critical("no Launchers found!??")
 	if not mimezsemi:
-		log.logging.warning("no mimetypes found!??")
+		log.logging.critical("no mimetypes found!??")
 
 
 
@@ -356,7 +373,7 @@ def make_ql():
 	for i in range(len(launcherListe)):
 			launcherListe[i].set_property("quicklist", qlListe[i])
 
-#--------------------------------- main commands
+#--------------------------------- (further) main commands--------------------------------
 
 #debugwait()
 
