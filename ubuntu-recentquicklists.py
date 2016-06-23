@@ -13,11 +13,14 @@ import log
 #LOG_PATH = '/home/'+username+'/logs/'
 #LOG_PATH = '/var/log/' #file here needs to be manually created and chown respectively
 #what the hell, just log in the same folder the script is in..
-LOG_PATH = ''
+Path=os.path.dirname(os.path.realpath(__file__))
+
+
 
 
 def configread():#https://docs.python.org/3/library/configparser.html
 	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath
+	global Path
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
@@ -25,7 +28,7 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	
 	
 	#open the config file
-	config.read("urq.conf")
+	config.read(Path+'/'+"urq.conf")
 
 	#if these entries are not existant, create them with default values
 	if not config.has_section("General"):
@@ -74,8 +77,8 @@ configread()
 log.verbose(verboselogging)#also display debug messages, if false: up to warning level
 log.onlycritical(onlycritical)#turn general logging on or off, yes this has to sit below "verbose"
 
-log.set_logpath(LOG_PATH)#where to put..
-log.create('ubuntu-recentquicklists.out')#..this logfile
+log.set_logpath(Path+'/')#here goes..
+log.create('ubuntu-recentquicklists.out')#..the logfile
 log.logging.warning('----Start-----')
 
 #on registered exit try to log the occasion
