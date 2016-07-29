@@ -1,25 +1,32 @@
 #!/usr/bin/env python3
-#import time
-#time.sleep(20) # delay for x seconds
+##import time
+##time.sleep(20) # delay for x seconds
 from gi.repository import Unity, Gio, GObject, Dbusmenu, Gtk
 import os, subprocess, sys
 import configparser
 import atexit
 from gi.repository import Notify as notify#notification bubble
 
+
+# --> comment
+## --> old/alternative code
+
+
+
 #custom logging
 import log
-#username=''
-#LOG_PATH = '/home/'+username+'/logs/'
-#LOG_PATH = '/var/log/' #file here needs to be manually created and chown respectively
+##username=''
+##LOG_PATH = '/home/'+username+'/logs/'
+##LOG_PATH = '/var/log/' #file here needs to be manually created and chown respectively
 #what the hell, just log in the same folder the script is in..
 Path=os.path.dirname(os.path.realpath(__file__))
 
 
 
 
+
 def configread():#https://docs.python.org/3/library/configparser.html
-	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath
+	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath, maxentriesperlist
 	global Path
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
@@ -52,6 +59,9 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	if not config.has_option("General","showfullpath"):
 		config.set("General","showfullpath","False")
 
+	if not config.has_option("General","maxentriesperlist"):
+		config.set("General","maxentriesperlist","10")
+
 	#create missing entries with default values, if there are any
 	with open('urq.conf', 'w') as configfile:
 		config.write(configfile)
@@ -63,9 +73,12 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	startupsplash=config.getboolean("General","startupsplash")
 	shortnagging=config.getboolean("General","shortnagging")
 	showfullpath=config.getboolean("General","showfullpath")
+	maxentriesperlist=config.getint("General","maxentriesperlist")
+	
+	#</configread>
 
-#def debugwait():
-#	input("Press Enter to continue...")
+##def debugwait():
+##	input("Press Enter to continue...")
 
 
 
@@ -85,6 +98,7 @@ log.logging.warning('----Start-----')
 @atexit.register
 def goodbye():
 	log.logging.warning('----Exit-----')
+	#</goodbye>
 
 #https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
 manager = Gtk.RecentManager.get_default()
@@ -94,12 +108,15 @@ else:
 	log.logging.critical("Gtk recentmanager FAILED to load!!")
 
 
-#lists are all very weird, but i'm to lazy to change them 
-mimetypes = []
-mimezsemi = []
-appexecs = []
+#global variables: horrible, but i don't want to write a 1000 things into each fct call either..
+
+entriesperList = [] #counter to make maxentriesperlist happen, per launcher slot
+mimetypes = []#which types of stuff an app thinks it can open
+mimetypes_raw = []
+appexecs = []#how the taskbar-icon opens stuff
 launcherListe = []
-mixedlist = []
+mixedlist = []#the click on a recent-item needs to know its associated application,
+#it contains both (being constructed in createItem)
 
 notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 #http://candidtim.github.io/appindicator/2014/09/13/ubuntu-appindicator-step-by-step.html
@@ -111,27 +128,29 @@ if startupsplash:
 
 def isEven(number):
         return number % 2 == 0
+	#</isEven>
 
-#turns a list of strings of multiple elements into a list of all elements
+#turns a list of strings of multiple elements into a list of all elements (semikolon-seperated)
 def semiarraytolist(semi):
-	#log.logging.info("in function semiarraytolist")
+	##log.logging.info("in function semiarraytolist")
 	liste=[]
 	for i in range(len(semi)):
 		liste.append(semi[i].split(";"))
 	return liste
-
+	#</semiarraytolist>
 
 #get launcher objects (not printable)
 def current_launcher():
 	#log.logging.info("in function getcurrentlauncher")
 	get_current = subprocess.check_output(["gsettings", "get", "com.canonical.Unity.Launcher", "favorites"]).decode("utf-8")
 	return eval(get_current)
+	#</current_launcher>
 
 def get_apps():
-	#log.logging.info("in function getapps")
-	apps = []
-	appexecslist = []
-	mimetypes = []
+	##log.logging.info("in function getapps")
+	launchers = []#"icons" in taskbar
+	appexecslist = []#how the icon opens stuff
+	mimetypes = []#which types of stuff an app thinks it can open
 	curr_launcher = current_launcher()
 	for i in range(len(curr_launcher)):		
 		if "application://" in curr_launcher[i]:
@@ -150,11 +169,11 @@ def get_apps():
 				if config.has_option("Desktop Entry","Exec"):
 						log.logging.warning(curr_launcher[i])
 						mimetypes.append(config.get("Desktop Entry","MimeType"))
-						#raw=True ignores special characters and imports them "as-is"
+						#raw-->True ignores special characters and imports them "as-is"
 						appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
 						#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
 						curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
-						apps.append(curr_launcher[i])
+						launchers.append(curr_launcher[i])
 				else:
 						log.logging.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
 						log.logging.warning("have a look at the github-wiki:compatibility-manual_adding")
@@ -164,21 +183,18 @@ def get_apps():
 				log.logging.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
 				log.logging.warning("have a look at the github-wiki:compatibility-manual_adding")
 
-	return apps,mimetypes,appexecslist
-	
+	return launchers,mimetypes,appexecslist
+	#</get_apps>
 
-def evaluateapps():
-	#log.logging.info("in function evaluateapps")
-	appfiles,mimezsemi,appexecslist=get_apps()
+def get_conv_apps():
+	appfiles,mimetypes_raw,appexecslist=get_apps()
 	applaunchers = []
 	
 	for i in range(len(appfiles)):
 		applaunchers.append(Unity.LauncherEntry.get_for_desktop_id(appfiles[i]))
 
-	return applaunchers,mimezsemi,appexecslist
-
-
-
+	return applaunchers,mimetypes_raw,appexecslist
+	#</get_conv_apps>
 
 
 
@@ -189,10 +205,11 @@ def contains(liste, item):
 			if l.match(item) == True :
 					return True
 	return False
+	#</contains>
 
 #sort list by modification date (most recent first)
 def sort(liste):
-	#log.logging.info("in function sort")
+	##log.logging.info("in function sort")
 	info = liste[0]
 	geordListe = []
 	
@@ -212,21 +229,22 @@ def sort(liste):
 		ageMax = 0
 		
 	return geordListe
-			
+	#</sort>
 
 def returnapplication(location):
-	#log.logging.info("in function returnapplication")
+	##log.logging.info("in function returnapplication")
 	global mixedlist
-	for i in range(len(mixedlist)):
-		
+	for i in range(len(mixedlist)):#lazy search
 		if isEven(i):
 			if mixedlist[i]==location:
 				return (i)
+				#mixedlist contains the "location"=path+filename, and after that entry the associated app
+	#</returnapplication>
 
 #this function gets called if something in our quicklist is clicked
-def check_item_activated(menuitem, a, location):#afaik, the def of these arguments cannot be changed
+def check_item_activated(menuitem, a, location):#afaik, the def of these arguments cannot be changed (everytime I tried it stopped working)
 	global mixedlist, manager
-	if os.path.exists(location):#just open it
+	if os.path.exists(location):#look up which program to use for this "location" (=path+filename), its the element after where the file itself lies in mixedlist
 		process = subprocess.Popen(mixedlist[returnapplication(location)+1],shell=True)
 	else:#if what you wanted to open is gone
 		#https://bugzilla.gnome.org/show_bug.cgi?id=137278
@@ -238,32 +256,31 @@ def check_item_activated(menuitem, a, location):#afaik, the def of these argumen
 			notify.Notification.new("<b>URQ: File not found</b>", "(has been renamed/moved/deleted)", None).show()
 
 		log.logging.warning("File not found: "+location)
-		#manager.remove_item(location)
-		#it got removed already, so just update the list
+		##manager.remove_item(location) #it got removed already, so just update the list
 		check_update_real()
 		#a renamed file however shows up in new list??
-
+	#</check_item_activated>
 
 #create quicklist entry
 def createItem(name, location, qlnummer):
-	#log.logging.info("in function createitem")
+	##log.logging.info("in function createitem")
 	global mixedlist, qlListe
-	#remove the %U, %F or whatever of the exec path
-	#(string replace command neither likes the % nor its escaped form %%)
+	
 	mixedlist.append(location)
 	log.logging.info(location)
-	#log.logging.info(appexecs[qlnummer])
-	#the slash is used to escape the quotes (") meaning they are part of a string not end of a string 
-	#mixedlist.append((appexecs[qlnummer])[:-2]+"\""+location+"\"") doesn't work for kde4
+	##log.logging.info(appexecs[qlnummer])
+	##the slash is used to escape the quotes (") meaning they are part of a string not end of a string 
+	##mixedlist.append((appexecs[qlnummer])[:-2]+"\""+location+"\"") doesn't work for kde4
+	##(string replace command neither likes the % nor its escaped form %%)
 	
 	#some make sure every exec-line is uniform and uses %U
 	appexecs[qlnummer]=appexecs[qlnummer].replace("%F","%U")
 	head, sep, tail = appexecs[qlnummer].partition('%U')
 	mixedlist.append(head+"\""+location+"\"")
+	##appexecs[qlnummer]=(head+"\""+location+"\"")#mixedlist required to find its associated exec directive
 
 	item = Dbusmenu.Menuitem.new()
-	#head, tail = os.path.split("/tmp/d/a.dat")
-	#head, tail = os.path.split(name)#worked, but don't do it here, do it on fct call
+	#this only creates an item with a name, the exec association and stuff happens in check_item_activated
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 	#connect the click-handler. it's the same for all entries
@@ -276,10 +293,10 @@ def createItem(name, location, qlnummer):
 	#</createItem>
 
 def update():
-	global maxage, qlListe
+	global maxage, qlListe, mimetypes, mimetypes_raw
 	liste = manager.get_items()
 	log.logging.warning("updating, i've got "+str(len(liste))+"unfiltered items")
-	infoListe = []
+	infoListe = []#infoListe seems a bit strange, too lazy to find out what it does
 	
 	for i in range(len(mimetypes)):
 		infoListe.append([])
@@ -287,10 +304,10 @@ def update():
 
 	#only use files with a supported mimetype
 	for i in liste:
-		if i.exists():#omitting that would allow deleted files to show up all the time
-			for e in range(len(mimezsemi)):
+		if i.exists():#<--omitting that would allow deleted files to show up all the time
+			for e in range(len(mimetypes_raw)):
 				listex=[]
-				listex=mimezsemi[e].split(";")
+				listex=mimetypes_raw[e].split(";")
 	
 				for g in range(len(listex)):
 					if i.get_mime_type()==listex[g]:
@@ -298,24 +315,38 @@ def update():
 							
 
 	
-	#log.logging.warning(str(len(infoListe))+" launchers have been identified")
-	#
+	##log.logging.warning(str(len(infoListe))+" launchers have been identified")
+	
 	x=0
 	for y in range(len(infoListe)):			
 		x=x+len(infoListe[y])
 	log.logging.warning("now, "+str(x)+" items are good to go ")			
 	#remove deleted documents
 	#issue: no call from the system if something is deleted, only when recent files changed
+
+	#create empty list
+	z=len(infoListe)
+	z=z+1
+	for i in range(z):
+		#if len(infoListe[i]) != 0 :
+			entriesperList.append(0)
+
+
+
 	for i in range(len(infoListe)):
 		if len(infoListe[i]) != 0 :
 			for info in sort(infoListe[i]):
-				if (info.get_age()<maxage):
+				#print(i)
+				#print("%i has entry %i",i,entriesperList[i])
+				if ( (info.get_age()<maxage) and (entriesperList[i]<maxentriesperlist) ):
+				#	print("after if %i has entry %i",i,entriesperList[i])
 					head, tail = os.path.split(info.get_uri_display())
-					#alternatively: tail=info.get_short_name ()
+					##alternatively: tail=info.get_short_name ()
 					if not showfullpath:
 						createItem(tail, head+"/"+tail,i)
 					else:
 						createItem(head+"/"+tail, head+"/"+tail,i)
+					entriesperList[i]=entriesperList[i]+1
 			
 
 	#add seperators
@@ -355,18 +386,18 @@ def check_update(a):
 
 
 def initialize_launchers():
-	global launcherListe, mimezsemi, appexecs, mimetypes, qlListe
+	global launcherListe, mimetypes_raw, appexecs, mimetypes, qlListe
 
 
-	launcherListe, mimezsemi, appexecs = evaluateapps()
+	launcherListe, mimetypes_raw, appexecs = get_conv_apps()
 
-	mimetypes=semiarraytolist(mimezsemi)
+	mimetypes=semiarraytolist(mimetypes_raw)#turn the bulk comma-seperated mess into an actual list
 
 
 	if not launcherListe:
 		log.logging.critical("no Launchers found!??")
-	if not mimezsemi:
-		log.logging.critical("no mimetypes found!??")
+	if not mimetypes_raw:
+		log.logging.critical("no Mimetypes found!??")
 
 
 
@@ -381,6 +412,7 @@ def make_ql():
 	global launcherListe, qlListe
 	for i in range(len(launcherListe)):
 			launcherListe[i].set_property("quicklist", qlListe[i])
+	#</make_ql>
 
 #--------------------------------- (further) main commands--------------------------------
 
