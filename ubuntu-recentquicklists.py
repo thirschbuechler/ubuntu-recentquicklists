@@ -30,7 +30,7 @@ def criticalx(title,msg=""):#displays bubble and loggs as well
 		title="URQ: Critical Error"
 	logger.critical(title+": "+msg)
 	notify.Notification.new("<b>"+title+"</b>", msg, None).show()
-	#</criticalx>
+#</criticalx>
 	
 
 
@@ -48,9 +48,9 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 
-	cfile=Path+'/'+"urq.conf"
 	
 	#open the config file
+	cfile=Path+'/'+"urq.conf"
 	config.read(cfile)
 
 	#if these entries are not existant, create them with default values
@@ -91,7 +91,7 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	showfullpath=config.getboolean("General","showfullpath")
 	maxentriesperlist=config.getint("General","maxentriesperlist")
 	
-	#</configread>
+#</configread>
 
 ##def debugwait():
 ##	input("Press Enter to continue...")
@@ -109,7 +109,7 @@ configread()
 @atexit.register
 def goodbye():
 	logger.warning('----Exit-----')
-	#</goodbye>
+#</goodbye>
 
 #https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
 manager = Gtk.RecentManager.get_default()
@@ -139,11 +139,11 @@ if startupsplash:
 
 ##def debughere(here):
 ##	logger.info("currently here: "+here)
-	##</debughere>
+##</debughere>
 
 def isEven(number):
         return number % 2 == 0
-	#</isEven>
+#</isEven>
 
 #turns a list of strings of multiple elements into a list of all elements (semikolon-seperated)
 def semiarraytolist(semi):
@@ -151,13 +151,13 @@ def semiarraytolist(semi):
 	for i in range(len(semi)):
 		list.append(semi[i].split(";"))
 	return list
-	#</semiarraytolist>
+#</semiarraytolist>
 
 #get launcher objects (not printable)
 def current_launcher():
 	get_current = subprocess.check_output(["gsettings", "get", "com.canonical.Unity.Launcher", "favorites"]).decode("utf-8")
 	return eval(get_current)
-	#</current_launcher>
+#</current_launcher>
 
 def get_apps():
 	launchers = []#"icons" in taskbar
@@ -197,7 +197,7 @@ def get_apps():
 				logger.warning("have a look at the github-wiki:compatibility-manual_adding")
 
 	return launchers,mimetypes,appexecslist
-	#</get_apps>
+#</get_apps>
 
 def get_conv_apps():
 	appfiles,mimetypes_raw,appexecslist=get_apps()
@@ -207,7 +207,7 @@ def get_conv_apps():
 		applaunchers.append(Unity.LauncherEntry.get_for_desktop_id(appfiles[i]))
 
 	return applaunchers,mimetypes_raw,appexecslist
-	#</get_conv_apps>
+#</get_conv_apps>
 
 
 
@@ -218,7 +218,7 @@ def contains(list, item):
 			if l.match(item) == True :
 					return True
 	return False
-	#</contains>
+#</contains>
 
 #sort list by modification date (most recent first)
 def sort(list):
@@ -241,7 +241,7 @@ def sort(list):
 		ageMax = 0
 		
 	return geordList
-	#</sort>
+#</sort>
 
 def returnapplication(location):
 	global mixedlist
@@ -250,7 +250,7 @@ def returnapplication(location):
 			if mixedlist[i]==location:
 				return (i)
 				#mixedlist contains the "location"=path+filename, and after that entry the associated app
-	#</returnapplication>
+#</returnapplication>
 
 #this function gets called if something in our quicklist is clicked
 def check_item_activated(menuitem, a, location):#afaik, the def of these arguments cannot be changed (everytime I tried it stopped working)
@@ -270,9 +270,9 @@ def check_item_activated(menuitem, a, location):#afaik, the def of these argumen
 		criticalx("URQ: "+tail+" found", text)
 		##logger.warning("File not found: "+location)
 		##manager.remove_item(location) #it got removed already, so just update the list
-		check_update_real()
+		check_update()
 		#a renamed file however shows up in new list??
-	#</check_item_activated>
+#</check_item_activated>
 
 #create quicklist entry
 def createItem(name, location, qlnummer):
@@ -302,13 +302,14 @@ def createItem(name, location, qlnummer):
 	
 	
 	logger.info("added "+location)
-	#</createItem>
+#</createItem>
 
 def update():
 	global maxage, qlList, mimetypes, mimetypes_raw
 	list = manager.get_items()
 	logger.warning("updating, i've got "+str(len(list))+"unfiltered items")
 	infoList = []
+	seperators = []
 	
 	for i in range(len(mimetypes)):
 		infoList.append([])
@@ -336,9 +337,10 @@ def update():
 
 
 	#create empty list
-	for i in range((len(infoList))+1):
+	for i in range((len(infoList))):
 		#if len(infoList[i]) != 0 :
 			entriesperList.append(0)
+			seperators.append(0)
 
 
 	for i in range(len(infoList)):
@@ -352,21 +354,31 @@ def update():
 					else:
 						createItem(head+"/"+tail, head+"/"+tail,i)
 					entriesperList[i]=entriesperList[i]+1
-			
+#</if maxage, maxentriesperlist>
 
+#</info in infoList>
+#</ i in infoList>	
+	
+	
+	#launchers that don't need an additional seperator.. no need to make this a config setting right now
+	for i in range(len(seperators)):
+		if ("okular" in appexecs[i]):
+			seperators[i]=1
+	
 	#add seperators
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0:
-			separator = Dbusmenu.Menuitem.new ();
-			separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-			separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-			qlList[i].child_append (separator)
+			if (seperators[i]==0):#okular does not need a seperator
+				separator = Dbusmenu.Menuitem.new ();
+				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+				qlList[i].child_append (separator)
+				seperators[i]=1
 	
-	
-	#</update>
+#</update>
 
-
-def check_update_real():
+#called on gtk_recent_manager "changed"-event, the "a" parameter is a bit mysterious, probably needed by manager.connect()
+def check_update(a=None):
 	##initialize_launchers()#on filechanges a new/rem. launcher gets recognized
 	##make_ql()#and the quicklist gets generated
 	##manager.connect("changed",check_update)#and connected
@@ -379,13 +391,8 @@ def check_update_real():
 		for c in qlList[i].get_children():
 			qlList[i].child_delete(c)
 	update()
-	#</check_update_real>
+#</check_update>
 
-
-#called on gtk_recent_manager "changed"-event, the "a" parameter is a bit mysterious
-def check_update(a):
-	check_update_real()
-	#</check_update>
 
 
 
@@ -411,13 +418,13 @@ def initialize_launchers():
 	for i in range(len(launcherList)):
 		qli = Dbusmenu.Menuitem.new()
 		qlList.append(qli)
-	#</initialize_launchers()>
+#</initialize_launchers()>
 
 def make_ql():
 	global launcherList, qlList
 	for i in range(len(launcherList)):
 			launcherList[i].set_property("quicklist", qlList[i])
-	#</make_ql>
+#</make_ql>
 
 #--------------------------------- (further) main commands--------------------------------
 
