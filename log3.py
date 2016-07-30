@@ -7,7 +7,7 @@ import logging.handlers
 
 
 def setup(lfile, level):
-    #levels:5
+    #levels:
     #logging.DEBUG,
     #logging.INFO
     #logging.WARNING
