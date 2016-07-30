@@ -267,7 +267,7 @@ def check_item_activated(menuitem, a, location):#afaik, the def of these argumen
 			text = "(has been renamed/moved/deleted)"
 			##notify.Notification.new("<b>URQ: "+tail+" found</b>", "(has been renamed/moved/deleted)", None).show()
 			##"<b>URQ: File not found</b>"
-		criticalx("URQ: "+tail+" found", text)
+		criticalx("URQ: "+tail+" not found", text)
 		##logger.warning("File not found: "+location)
 		##manager.remove_item(location) #it got removed already, so just update the list
 		check_update()
