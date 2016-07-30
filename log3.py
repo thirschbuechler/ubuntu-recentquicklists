@@ -1,0 +1,36 @@
+#!/usr/bin/python3
+#https://docs.python.org/2.6/library/logging.html
+
+
+import logging
+import logging.handlers
+
+
+def setup(lfile, level):
+    #levels:5
+    #logging.DEBUG,
+    #logging.INFO
+    #logging.WARNING
+    #logging.ERROR
+    #logging.CRITICAL
+    
+    #log handle
+    mylog = logging.getLogger(lfile)
+    mylog.setLevel(level)
+    
+    
+    #beef up logging by adding safeguards
+    handler = logging.handlers.RotatingFileHandler(lfile, maxBytes=1000000, backupCount=3)#1MB approx. times 3
+    handler.setFormatter(logging.Formatter(
+        '%(asctime)s [%(process)d]: %(levelname)s %(message)s'))
+            #    '%(asctime)s %(pathname)s [%(process)d]: %(levelname)s %(message)s'))
+            
+    mylog.addHandler(handler)
+
+    return mylog
+
+def criticalx(msg, *args, **kwargs):
+    print(msg)
+    logging.critical(msg, *args, **kwargs)
+	
+logging.criticalx = criticalx
