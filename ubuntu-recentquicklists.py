@@ -22,7 +22,11 @@ import log
 Path=os.path.dirname(os.path.realpath(__file__))
 
 
-
+print("")
+print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
+print("In that case, you may need to upgrade these modules or Ubuntu itself (before, manually open and close a document to see whether the recentmanager just got emptied unexpectedly)")
+print(" ")
+print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-file")
 
 
 def configread():#https://docs.python.org/3/library/configparser.html
@@ -114,7 +118,7 @@ entriesperList = [] #counter to make maxentriesperlist happen, per launcher slot
 mimetypes = []#which types of stuff an app thinks it can open
 mimetypes_raw = []
 appexecs = []#how the taskbar-icon opens stuff
-launcherListe = []
+launcherList = []
 mixedlist = []#the click on a recent-item needs to know its associated application,
 #it contains both (being constructed in createItem)
 
@@ -126,31 +130,33 @@ if startupsplash:
 
 #------------------function definitions------------------------
 
+##def debughere(here):
+##	log.logging.info("currently here: "+here)
+	##</debughere>
+
 def isEven(number):
         return number % 2 == 0
 	#</isEven>
 
 #turns a list of strings of multiple elements into a list of all elements (semikolon-seperated)
 def semiarraytolist(semi):
-	##log.logging.info("in function semiarraytolist")
-	liste=[]
+	list=[]
 	for i in range(len(semi)):
-		liste.append(semi[i].split(";"))
-	return liste
+		list.append(semi[i].split(";"))
+	return list
 	#</semiarraytolist>
 
 #get launcher objects (not printable)
 def current_launcher():
-	#log.logging.info("in function getcurrentlauncher")
 	get_current = subprocess.check_output(["gsettings", "get", "com.canonical.Unity.Launcher", "favorites"]).decode("utf-8")
 	return eval(get_current)
 	#</current_launcher>
 
 def get_apps():
-	##log.logging.info("in function getapps")
 	launchers = []#"icons" in taskbar
 	appexecslist = []#how the icon opens stuff
 	mimetypes = []#which types of stuff an app thinks it can open
+
 	curr_launcher = current_launcher()
 	for i in range(len(curr_launcher)):		
 		if "application://" in curr_launcher[i]:
@@ -199,40 +205,38 @@ def get_conv_apps():
 
 
 
-def contains(liste, item):
-	if len(liste) != 0:
-		for l in liste:
+def contains(list, item):
+	if len(list) != 0:
+		for l in list:
 			if l.match(item) == True :
 					return True
 	return False
 	#</contains>
 
 #sort list by modification date (most recent first)
-def sort(liste):
-	##log.logging.info("in function sort")
-	info = liste[0]
-	geordListe = []
+def sort(list):
+	info = list[0]
+	geordList = []
 	
 	ageMax = 0
-	for l in liste:
+	for l in list:
 		if l.get_modified() >= ageMax:
 			ageMax = l.get_modified()
 	
 	age = ageMax
-	for i in range(len(liste)):
-		for l in liste:
+	for i in range(len(list)):
+		for l in list:
 			if l.get_modified() >= ageMax:
-				if contains(geordListe,l) == False:
+				if contains(geordList,l) == False:
 					ageMax = l.get_modified()
 					info = l
-		geordListe.append(info)
+		geordList.append(info)
 		ageMax = 0
 		
-	return geordListe
+	return geordList
 	#</sort>
 
 def returnapplication(location):
-	##log.logging.info("in function returnapplication")
 	global mixedlist
 	for i in range(len(mixedlist)):#lazy search
 		if isEven(i):
@@ -263,8 +267,7 @@ def check_item_activated(menuitem, a, location):#afaik, the def of these argumen
 
 #create quicklist entry
 def createItem(name, location, qlnummer):
-	##log.logging.info("in function createitem")
-	global mixedlist, qlListe
+	global mixedlist, qlList
 	
 	mixedlist.append(location)
 	log.logging.info(location)
@@ -285,7 +288,7 @@ def createItem(name, location, qlnummer):
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 	#connect the click-handler. it's the same for all entries
 	item.connect("item-activated", check_item_activated,location)
-	if not qlListe[qlnummer].child_append(item)	:
+	if not qlList[qlnummer].child_append(item)	:
 		log.logging.warning("dbusmenu-item %s failed to be created, quicklist can't be created!" % name)
 	
 	
@@ -293,53 +296,46 @@ def createItem(name, location, qlnummer):
 	#</createItem>
 
 def update():
-	global maxage, qlListe, mimetypes, mimetypes_raw
-	liste = manager.get_items()
-	log.logging.warning("updating, i've got "+str(len(liste))+"unfiltered items")
-	infoListe = []#infoListe seems a bit strange, too lazy to find out what it does
+	global maxage, qlList, mimetypes, mimetypes_raw
+	list = manager.get_items()
+	log.logging.warning("updating, i've got "+str(len(list))+"unfiltered items")
+	infoList = []
 	
 	for i in range(len(mimetypes)):
-		infoListe.append([])
+		infoList.append([])
 
 
 	#only use files with a supported mimetype
-	for i in liste:
+	for i in list:
 		if i.exists():#<--omitting that would allow deleted files to show up all the time
 			for e in range(len(mimetypes_raw)):
-				listex=[]
-				listex=mimetypes_raw[e].split(";")
+				listx=[]
+				listx=mimetypes_raw[e].split(";")
 	
-				for g in range(len(listex)):
-					if i.get_mime_type()==listex[g]:
-						infoListe[e].append(i)
+				for g in range(len(listx)):
+					if i.get_mime_type()==listx[g]:
+						infoList[e].append(i)
 							
 
 	
-	##log.logging.warning(str(len(infoListe))+" launchers have been identified")
+	##log.logging.warning(str(len(infoList))+" launchers have been identified")
 	
 	x=0
-	for y in range(len(infoListe)):			
-		x=x+len(infoListe[y])
+	for y in range(len(infoList)):			
+		x=x+len(infoList[y])
 	log.logging.warning("now, "+str(x)+" items are good to go ")			
-	#remove deleted documents
-	#issue: no call from the system if something is deleted, only when recent files changed
+
 
 	#create empty list
-	z=len(infoListe)
-	z=z+1
-	for i in range(z):
-		#if len(infoListe[i]) != 0 :
+	for i in range((len(infoList))+1):
+		#if len(infoList[i]) != 0 :
 			entriesperList.append(0)
 
 
-
-	for i in range(len(infoListe)):
-		if len(infoListe[i]) != 0 :
-			for info in sort(infoListe[i]):
-				#print(i)
-				#print("%i has entry %i",i,entriesperList[i])
+	for i in range(len(infoList)):
+		if len(infoList[i]) != 0 :
+			for info in sort(infoList[i]):
 				if ( (info.get_age()<maxage) and (entriesperList[i]<maxentriesperlist) ):
-				#	print("after if %i has entry %i",i,entriesperList[i])
 					head, tail = os.path.split(info.get_uri_display())
 					##alternatively: tail=info.get_short_name ()
 					if not showfullpath:
@@ -350,29 +346,29 @@ def update():
 			
 
 	#add seperators
-	for i in range(len(infoListe)):
-		if len(infoListe[i]) != 0:
+	for i in range(len(infoList)):
+		if len(infoList[i]) != 0:
 			separator = Dbusmenu.Menuitem.new ();
 			separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 			separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-			qlListe[i].child_append (separator)
+			qlList[i].child_append (separator)
 	
 	
 	#</update>
 
 
 def check_update_real():
-	#initialize_launchers()#on filechanges a new/rem. launcher gets recognized
-	#make_ql()#and the quicklist gets generated
-	#manager.connect("changed",check_update)#and connected
-	#that, however, doesn't work (beyond 1-3clicks) and results in the quicklist not executing anything
-	#maybe relaunch script itself, out of itself?
+	##initialize_launchers()#on filechanges a new/rem. launcher gets recognized
+	##make_ql()#and the quicklist gets generated
+	##manager.connect("changed",check_update)#and connected
+	##that, however, doesn't work (beyond 1-3clicks) and results in the quicklist not executing anything
+	##maybe relaunch script itself, out of itself?
 
 
 	#old quicklists have to be deleted before updating, otherwise new items would be appended
-	for i in range(len(qlListe)):
-		for c in qlListe[i].get_children():
-			qlListe[i].child_delete(c)
+	for i in range(len(qlList)):
+		for c in qlList[i].get_children():
+			qlList[i].child_delete(c)
 	update()
 	#</check_update_real>
 
@@ -386,15 +382,15 @@ def check_update(a):
 
 
 def initialize_launchers():
-	global launcherListe, mimetypes_raw, appexecs, mimetypes, qlListe
+	global launcherList, mimetypes_raw, appexecs, mimetypes, qlList
 
 
-	launcherListe, mimetypes_raw, appexecs = get_conv_apps()
+	launcherList, mimetypes_raw, appexecs = get_conv_apps()
 
 	mimetypes=semiarraytolist(mimetypes_raw)#turn the bulk comma-seperated mess into an actual list
 
 
-	if not launcherListe:
+	if not launcherList:
 		log.logging.critical("no Launchers found!??")
 	if not mimetypes_raw:
 		log.logging.critical("no Mimetypes found!??")
@@ -402,16 +398,16 @@ def initialize_launchers():
 
 
 	#register quicklist
-	qlListe = []
-	for i in range(len(launcherListe)):
+	qlList = []
+	for i in range(len(launcherList)):
 		qli = Dbusmenu.Menuitem.new()
-		qlListe.append(qli)
+		qlList.append(qli)
 	#</initialize_launchers()>
 
 def make_ql():
-	global launcherListe, qlListe
-	for i in range(len(launcherListe)):
-			launcherListe[i].set_property("quicklist", qlListe[i])
+	global launcherList, qlList
+	for i in range(len(launcherList)):
+			launcherList[i].set_property("quicklist", qlList[i])
 	#</make_ql>
 
 #--------------------------------- (further) main commands--------------------------------
