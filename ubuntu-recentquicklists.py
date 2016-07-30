@@ -364,6 +364,10 @@ def update():
 	for i in range(len(seperators)):
 		if ("okular" in appexecs[i]):
 			seperators[i]=1
+		elif ("vlc" in appexecs[i]):#else if
+			seperators[i]=1
+		elif ("i_view32" in appexecs[i]):#irfanview
+			seperators[i]=1
 	
 	#add seperators
 	for i in range(len(infoList)):
