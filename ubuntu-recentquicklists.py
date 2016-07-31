@@ -18,29 +18,6 @@ from gi.repository import Notify as notify#notification bubble
 import log3
 import logging.handlers #logging.WARNING and so on
 
-notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
-Path=os.path.dirname(os.path.abspath(__file__))
-logger = log3.setup(Path+"/"+"ubuntu-recentquicklists.out",logging.INFO)
-logger.warning("----Start-----")
-
-
-def criticalx(title,msg=""):#displays bubble and loggs as well
-	if (msg==""):#passing only one string triggers..
-		msg=title
-		title="URQ: Critical Error"
-	logger.critical(title+": "+msg)
-	notify.Notification.new("<b>"+title+"</b>", msg, None).show()
-#</criticalx>
-	
-
-
-print("")
-print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
-print("In that case, you may need to upgrade these modules or Ubuntu itself (before, manually open and close a document to see whether the recentmanager just got emptied unexpectedly)")
-print(" ")
-print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-file")
-
-
 def configread():#https://docs.python.org/3/library/configparser.html
 	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath, maxentriesperlist
 	global Path
@@ -93,17 +70,44 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	
 #</configread>
 
+
+notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
+Path=os.path.dirname(os.path.abspath(__file__))
+configread()
+
+if (onlycritical):
+	logger = log3.setup(Path+"/"+"ubuntu-recentquicklists.out",logging.CRITICAL)
+elif (verboselogging):
+	logger = log3.setup(Path+"/"+"ubuntu-recentquicklists.out",logging.INFO)
+else:
+	logger = log3.setup(Path+"/"+"ubuntu-recentquicklists.out",logging.WARNING)
+	
+logger.warning("----Start-----")
+
+
+def criticalx(title,msg=""):#displays bubble and loggs as well
+	if (msg==""):#passing only one string triggers..
+		msg=title
+		title="URQ: Critical Error"
+	logger.critical(title+": "+msg)
+	notify.Notification.new("<b>"+title+"</b>", msg, None).show()
+#</criticalx>
+	
+
+
+print("")
+print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
+print("In that case, you may need to upgrade these modules or Ubuntu itself (before, manually open and close a document to see whether the recentmanager just got emptied unexpectedly)")
+print(" ")
+print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-file")
+
+
 ##def debugwait():
 ##	input("Press Enter to continue...")
 
 
 
-#--------------------bootstrapping----------------------------------
-
-configread()
-
-
-
+#--------------------further bootstrapping----------------------------------
 
 #on registered exit try to log the occasion
 @atexit.register
