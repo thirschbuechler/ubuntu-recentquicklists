@@ -155,6 +155,7 @@ def semiarraytolist(semi):
 
 #get launcher objects (not printable)
 def current_launcher():
+	#http://askubuntu.com/questions/165147/bash-script-to-add-remove-desktop-launchers-to-unity-launcher
 	get_current = subprocess.check_output(["gsettings", "get", "com.canonical.Unity.Launcher", "favorites"]).decode("utf-8")
 	return eval(get_current)
 #</current_launcher>
@@ -265,13 +266,12 @@ def check_item_activated(menuitem, a, location):#afaik, the def of these argumen
 			text = text + "In case it got renamed, that happend now, so go back to the quicklist and try again"
 		else:
 			text = "(has been renamed/moved/deleted)"
-			##notify.Notification.new("<b>URQ: "+tail+" found</b>", "(has been renamed/moved/deleted)", None).show()
+			##notify.Notification.new("<b>URQ: "+tail+" not found</b>", "(has been renamed/moved/deleted)", None).show()
 			##"<b>URQ: File not found</b>"
-		criticalx("URQ: "+tail+" not found", text)
+		criticalx("URQ: "+tail+" found", text)
 		##logger.warning("File not found: "+location)
 		##manager.remove_item(location) #it got removed already, so just update the list
 		check_update()
-		#a renamed file however shows up in new list??
 #</check_item_activated>
 
 #create quicklist entry
@@ -287,6 +287,8 @@ def createItem(name, location, qlnummer):
 	
 	#some make sure every exec-line is uniform and uses %U
 	appexecs[qlnummer]=appexecs[qlnummer].replace("%F","%U")
+	appexecs[qlnummer]=appexecs[qlnummer].replace("%f","%U")
+	appexecs[qlnummer]=appexecs[qlnummer].replace("%u","%U")
 	head, sep, tail = appexecs[qlnummer].partition('%U')
 	mixedlist.append(head+"\""+location+"\"")
 	##appexecs[qlnummer]=(head+"\""+location+"\"")#mixedlist required to find its associated exec directive
@@ -305,36 +307,29 @@ def createItem(name, location, qlnummer):
 #</createItem>
 
 def update():
-	global maxage, qlList, mimetypes, mimetypes_raw
+	global maxage, qlList, mimetypes
 	list = manager.get_items()
 	logger.warning("updating, i've got "+str(len(list))+"unfiltered items")
 	infoList = []
 	seperators = []
 	
 	for i in range(len(mimetypes)):
-		infoList.append([])
+		infoList.append([])#initialize infoList
 
-
-	#only use files with a supported mimetype
-	for i in list:
-		if i.exists():#<--omitting that would allow deleted files to show up all the time
-			for e in range(len(mimetypes_raw)):
-				listx=[]
-				listx=mimetypes_raw[e].split(";")
-	
-				for g in range(len(listx)):
-					if i.get_mime_type()==listx[g]:
-						infoList[e].append(i)
-							
-
-	
-	##logger.warning(str(len(infoList))+" launchers have been identified")
-	
+		
 	x=0
-	for y in range(len(infoList)):			
-		x=x+len(infoList[y])
-	logger.warning("now, "+str(x)+" items are good to go ")			
+	#only use files with a supported mimetype, populate infoList accordingly
+	for i in list:
+		if i.exists():#prevent deleted/moved/renamed "ghosts" of files showing up
+			for e in range(len(mimetypes)):
+				for g in range(len(mimetypes[e])):
+					if ((i.get_mime_type()==mimetypes[e][g]) and (i.get_age()<maxage)):
+						x=x+1
+						infoList[e].append(i)
+	#</ i in list>	
 
+	
+	logger.warning("now, "+str(x)+" items are good to go ")			
 
 	#create empty list
 	for i in range((len(infoList))):
@@ -346,7 +341,7 @@ def update():
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0 :
 			for info in sort(infoList[i]):
-				if ( (info.get_age()<maxage) and (entriesperList[i]<maxentriesperlist) ):
+				if (entriesperList[i]<maxentriesperlist):
 					head, tail = os.path.split(info.get_uri_display())
 					##alternatively: tail=info.get_short_name ()
 					if not showfullpath:
@@ -354,20 +349,22 @@ def update():
 					else:
 						createItem(head+"/"+tail, head+"/"+tail,i)
 					entriesperList[i]=entriesperList[i]+1
-#</if maxage, maxentriesperlist>
-
-#</info in infoList>
-#</ i in infoList>	
+				#</if maxage, maxentriesperlist>
+			#</info in infoList>
+	#</ i in infoList>	
 	
 	
 	#launchers that don't need an additional seperator.. no need to make this a config setting right now
 	for i in range(len(seperators)):
 		if ("okular" in appexecs[i]):
 			seperators[i]=1
-		elif ("vlc" in appexecs[i]):#else if
+		elif ("vlc" in appexecs[i]):#else if - vlc
 			seperators[i]=1
 		elif ("i_view32" in appexecs[i]):#irfanview
 			seperators[i]=1
+		elif ("djview" in appexecs[i]):#djview4
+			seperators[i]=1
+
 	
 	#add seperators
 	for i in range(len(infoList)):
@@ -411,9 +408,9 @@ def initialize_launchers():
 
 
 	if not launcherList:
-		criticalx("no Launchers found!??")
+		criticalx("no Launchers found!")
 	if not mimetypes_raw:
-		criticalx("no Mimetypes found!??")
+		criticalx("no Mimetypes found!")
 
 
 
