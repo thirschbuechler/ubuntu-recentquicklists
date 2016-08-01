@@ -186,7 +186,7 @@ def get_apps():
 			#http://askubuntu.com/questions/157281/how-do-i-add-an-icon-to-the-unity-dock-not-drag-and-drop/157288#157288
 			curr_launcher[i]=curr_launcher[i].replace("application://","")
 			#make kde4 apps work as well, yay!!
-			#here, we need to change its prefix to a folder, as in usr/share/applications it has its folder
+			#change its prefix to a folder, as in usr/share/applications it has its folder
 			curr_launcher[i]=curr_launcher[i].replace("kde4-","kde4/")
 			
 			config = configparser.SafeConfigParser()
@@ -216,11 +216,13 @@ def get_apps():
 def get_conv_apps():
 	appfiles,mimetypes_raw,appexecslist=get_apps()
 	applaunchers = []
+	mimetypes = []
 	
 	for i in range(len(appfiles)):
 		applaunchers.append(Unity.LauncherEntry.get_for_desktop_id(appfiles[i]))
 
-	return applaunchers,mimetypes_raw,appexecslist
+	mimetypes=semiarraytolist(mimetypes_raw)
+	return applaunchers,mimetypes,appexecslist
 #</get_conv_apps>
 
 
@@ -266,8 +268,9 @@ def returnapplication(location):
 				#mixedlist contains the "location"=path+filename, and after that entry the associated app
 #</returnapplication>
 
-#this function gets called if something in our quicklist is clicked
-def check_item_activated(menuitem, a, location):#afaik, the def of these arguments cannot be changed (everytime I tried it stopped working)
+#this function gets called if something in a quicklist is clicked
+#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
+def check_item_activated(menuitem, a, location):
 	global mixedlist, manager
 	if os.path.exists(location):#look up which program to use for this "location" (=path+filename), its the element after where the file itself lies in mixedlist
 		process = subprocess.Popen(mixedlist[returnapplication(location)+1],shell=True)
@@ -337,7 +340,7 @@ def update():
 		if i.exists():#prevent deleted/moved/renamed "ghosts" of files showing up
 			for e in range(len(mimetypes)):
 				for g in range(len(mimetypes[e])):
-					if ((i.get_mime_type()==mimetypes[e][g]) and (i.get_age()<maxage)):
+					if ((i.get_mime_type()==mimetypes[e][g]) and (i.get_age()<(maxage+1))):
 						x=x+1
 						infoList[e].append(i)
 	#</ i in list>	
@@ -392,7 +395,9 @@ def update():
 	
 #</update>
 
-#called on gtk_recent_manager "changed"-event, the "a" parameter is a bit mysterious, probably needed by manager.connect()
+#called on gtk_recent_manager "changed"-event
+#per definition, the a parameter has to be here, altough unused
+#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
 def check_update(a=None):
 	##initialize_launchers()#on filechanges a new/rem. launcher gets recognized
 	##make_ql()#and the quicklist gets generated
@@ -410,20 +415,15 @@ def check_update(a=None):
 
 
 
-
-
 def initialize_launchers():
-	global launcherList, mimetypes_raw, appexecs, mimetypes, qlList
+	global launcherList, appexecs, mimetypes, qlList
 
-
-	launcherList, mimetypes_raw, appexecs = get_conv_apps()
-
-	mimetypes=semiarraytolist(mimetypes_raw)#turn the bulk comma-seperated mess into an actual list
+	launcherList, mimetypes, appexecs = get_conv_apps()
 
 
 	if not launcherList:
 		criticalx("no Launchers found!")
-	if not mimetypes_raw:
+	if not mimetypes:
 		criticalx("no Mimetypes found!")
 
 
@@ -450,7 +450,8 @@ initialize_launchers()
 #update on startup
 update()
 
-#connect the handler
+#connect the handler "check_update" to the signal "changed"
+#(lookup "pygtk gobject.GObject.connect")
 manager.connect("changed",check_update)
 
 make_ql()
