@@ -24,7 +24,7 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
-
+	missingentries=False
 	
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
@@ -33,31 +33,40 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	#if these entries are not existant, create them with default values
 	if not config.has_section("General"):
 		config.add_section("General")
+		missingentries=True
 
 	if not config.has_option("General","maxage"):
 		config.set("General","maxage","7")
+		missingentries=True
 
 	if not config.has_option("General","onlycritical"):
 		config.set("General","onlycritical","True")	
-
+		missingentries=True
+		
 	if not config.has_option("General","verboselogging"):
 		config.set("General","verboselogging","False")
-
+		missingentries=True
+		
 	if not config.has_option("General","startupsplash"):
 		config.set("General","startupsplash","True")	
-
+		missingentries=True
+		
 	if not config.has_option("General","shortnagging"):
 		config.set("General","shortnagging","False")
-
+		missingentries=True
+		
 	if not config.has_option("General","showfullpath"):
 		config.set("General","showfullpath","False")
-
+		missingentries=True
+		
 	if not config.has_option("General","maxentriesperlist"):
 		config.set("General","maxentriesperlist","10")
-
+		missingentries=True
+		
 	#create missing entries with default values, if there are any
-	with open(cfile, 'w') as configfile:
-		config.write(configfile)
+	if missingentries:
+		with open(cfile, 'w') as configfile:
+			config.write(configfile)
 
 	#now, read stuff (be it the just written defaults if there were none, or actual user settings)
 	maxage=config.getint("General","maxage")
@@ -125,7 +134,7 @@ else:
 
 #global variables: horrible, but i don't want to write a 1000 things into each fct call either..
 
-entriesperList = [] #counter to make maxentriesperlist happen, per launcher slot
+
 mimetypes = []#which types of stuff an app thinks it can open
 mimetypes_raw = []
 appexecs = []#how the taskbar-icon opens stuff
@@ -311,11 +320,12 @@ def createItem(name, location, qlnummer):
 #</createItem>
 
 def update():
-	global maxage, qlList, mimetypes
+	global maxage, qlList, mimetypes, maxentriesperlist
 	list = manager.get_items()
 	logger.warning("updating, i've got "+str(len(list))+"unfiltered items")
 	infoList = []
 	seperators = []
+	entriesperList = [] #counter to make maxentriesperlist happen, per launcher slot
 	
 	for i in range(len(mimetypes)):
 		infoList.append([])#initialize infoList
@@ -341,7 +351,7 @@ def update():
 			entriesperList.append(0)
 			seperators.append(0)
 
-
+	
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0 :
 			for info in sort(infoList[i]):
@@ -372,8 +382,8 @@ def update():
 	
 	#add seperators
 	for i in range(len(infoList)):
-		if len(infoList[i]) != 0:
-			if (seperators[i]==0):#okular does not need a seperator
+		if len(infoList[i]) != 0:#only add seperator if there are recent files for this launcher
+			if (seperators[i]==0):
 				separator = Dbusmenu.Menuitem.new ();
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
