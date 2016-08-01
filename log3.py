@@ -20,7 +20,7 @@ def setup(lfile, level):
     
     
     #beef up logging by adding safeguards
-    handler = logging.handlers.RotatingFileHandler(lfile, maxBytes=1000000, backupCount=3)#1MB approx. times 3
+    handler = logging.handlers.RotatingFileHandler(lfile, maxBytes=1000000, backupCount=3)# approx. 1MB per file
     handler.setFormatter(logging.Formatter(
         '%(asctime)s [%(process)d]: %(levelname)s %(message)s'))
             #    '%(asctime)s %(pathname)s [%(process)d]: %(levelname)s %(message)s'))
@@ -28,9 +28,3 @@ def setup(lfile, level):
     mylog.addHandler(handler)
 
     return mylog
-
-def criticalx(msg, *args, **kwargs):
-    print(msg)
-    logging.critical(msg, *args, **kwargs)
-	
-logging.criticalx = criticalx
