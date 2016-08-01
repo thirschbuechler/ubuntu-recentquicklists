@@ -351,7 +351,7 @@ def update():
 			entriesperList.append(0)
 			seperators.append(0)
 
-	#maxentriesperlist=500
+	
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0 :
 			for info in sort(infoList[i]):
