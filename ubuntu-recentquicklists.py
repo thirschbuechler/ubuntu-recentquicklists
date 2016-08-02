@@ -139,8 +139,6 @@ mimetypes = []#which types of stuff an app thinks it can open
 mimetypes_raw = []
 appexecs = []#how the taskbar-icon opens stuff
 launcherList = []
-mixedlist = []#the click on a recent-item needs to know its associated application,
-#it contains both (being constructed in createItem)
 
 
 if startupsplash:
@@ -222,10 +220,17 @@ def get_conv_apps():
 		applaunchers.append(Unity.LauncherEntry.get_for_desktop_id(appfiles[i]))
 
 	mimetypes=semiarraytolist(mimetypes_raw)
+	
+	
+	for i in range(len(appexecslist)):#these replace actions also throw away any possible other arguments,
+		appexecslist[i]=appexecslist[i].replace("%F","%U")#such as the okular "-caption %c" parameter, which isn't used here
+		appexecslist[i]=appexecslist[i].replace("%f","%U")
+		appexecslist[i]=appexecslist[i].replace("%u","%U")
+		head, sep, tail = appexecslist[i].partition('%U')
+		appexecslist[i]=head
+		
 	return applaunchers,mimetypes,appexecslist
 #</get_conv_apps>
-
-
 
 
 def contains(list, item):
@@ -259,21 +264,22 @@ def sort(list):
 	return geordList
 #</sort>
 
-def returnapplication(location):
-	global mixedlist
-	for i in range(len(mixedlist)):#lazy search
-		if isEven(i):
-			if mixedlist[i]==location:
-				return (i)
-				#mixedlist contains the "location"=path+filename, and after that entry the associated app
-#</returnapplication>
 
 #this function gets called if something in a quicklist is clicked
-#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
 def check_item_activated(menuitem, a, location):
-	global mixedlist, manager
-	if os.path.exists(location):#look up which program to use for this "location" (=path+filename), its the element after where the file itself lies in mixedlist
-		process = subprocess.Popen(mixedlist[returnapplication(location)+1],shell=True)
+#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
+	global manager, appexecs, qlList
+	pos = 0
+	# menuitem is a Dbusmenu.Menuitem object, it's the entry of the recent file
+	for i in range(len(qlList)):
+		if (menuitem.get_parent() == qlList[i]):#get its parent, aka the launcher
+			#print("gefunden an launcher-stelle: %d" %(i))
+			#print(appexecs[i])
+			pos=i
+			
+	if os.path.exists(location):
+		logger.info("exec "+appexecs[pos]+ "\""+ location+"\"")
+		process = subprocess.Popen(appexecs[pos]+ "\""+ location+"\"",shell=True)#look up which program to use for this "location" (=path+filename)
 	else:#if what you wanted to open is gone
 		#https://bugzilla.gnome.org/show_bug.cgi?id=137278
 		head, tail = os.path.split(location)#tail=filename
@@ -284,42 +290,27 @@ def check_item_activated(menuitem, a, location):
 			text = "(has been renamed/moved/deleted)"
 			##notify.Notification.new("<b>URQ: "+tail+" not found</b>", "(has been renamed/moved/deleted)", None).show()
 			##"<b>URQ: File not found</b>"
-		criticalx("URQ: "+tail+" found", text)
+		criticalx("URQ: "+tail+" not found", text)
 		##logger.warning("File not found: "+location)
 		##manager.remove_item(location) #it got removed already, so just update the list
 		check_update()
 #</check_item_activated>
 
-#create quicklist entry
-def createItem(name, location, qlnummer):
-	global mixedlist, qlList
-	
-	mixedlist.append(location)
-	logger.info(location)
-	##logger.info(appexecs[qlnummer])
-	##the slash is used to escape the quotes (") meaning they are part of a string not end of a string 
-	##mixedlist.append((appexecs[qlnummer])[:-2]+"\""+location+"\"") doesn't work for kde4
-	##(string replace command neither likes the % nor its escaped form %%)
-	
-	#some make sure every exec-line is uniform and uses %U
-	appexecs[qlnummer]=appexecs[qlnummer].replace("%F","%U")
-	appexecs[qlnummer]=appexecs[qlnummer].replace("%f","%U")
-	appexecs[qlnummer]=appexecs[qlnummer].replace("%u","%U")
-	head, sep, tail = appexecs[qlnummer].partition('%U')
-	mixedlist.append(head+"\""+location+"\"")
-	##appexecs[qlnummer]=(head+"\""+location+"\"")#mixedlist required to find its associated exec directive
 
+#create quicklist entry as dbus menu item, not yet attached to Unity
+def createItem(name, location, qlnummer):
+	global qlList, appexecs
+	
 	item = Dbusmenu.Menuitem.new()
-	#this only creates an item with a name, the exec association and stuff happens in check_item_activated
+	#this only creates an item with a name, the exec association happens in check_item_activated
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-	#connect the click-handler. it's the same for all entries
+	#attach event handler "check_item_activated"
 	item.connect("item-activated", check_item_activated,location)
 	if not qlList[qlnummer].child_append(item)	:
 		logger.warning("dbusmenu-item %s failed to be created, quicklist can't be created!" % name)
-	
-	
-	logger.info("added "+location)
+	else:
+		logger.info("added "+location)
 #</createItem>
 
 def update():
@@ -328,12 +319,11 @@ def update():
 	logger.warning("updating, i've got "+str(len(list))+"unfiltered items")
 	infoList = []
 	seperators = []
-	entriesperList = [] #counter to make maxentriesperlist happen, per launcher slot
+	entriesperList = [] #counter per launcher slot (to make maxentriesperlist happen)
 	
 	for i in range(len(mimetypes)):
 		infoList.append([])#initialize infoList
 
-		
 	x=0
 	#only use files with a supported mimetype, populate infoList accordingly
 	for i in list:
@@ -362,9 +352,9 @@ def update():
 					head, tail = os.path.split(info.get_uri_display())
 					##alternatively: tail=info.get_short_name ()
 					if not showfullpath:
-						createItem(tail, head+"/"+tail,i)
+						createItem(tail, head+"/"+tail,i)#name, fullpath
 					else:
-						createItem(head+"/"+tail, head+"/"+tail,i)
+						createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
 					entriesperList[i]=entriesperList[i]+1
 				#</if maxage, maxentriesperlist>
 			#</info in infoList>
@@ -396,9 +386,10 @@ def update():
 #</update>
 
 #called on gtk_recent_manager "changed"-event
-#per definition, the a parameter has to be here, altough unused
-#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
 def check_update(a=None):
+	#per definition, the a parameter has to be here, altough unused
+	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
+
 	##initialize_launchers()#on filechanges a new/rem. launcher gets recognized
 	##make_ql()#and the quicklist gets generated
 	##manager.connect("changed",check_update)#and connected
@@ -431,14 +422,16 @@ def initialize_launchers():
 	#register quicklist
 	qlList = []
 	for i in range(len(launcherList)):
-		qli = Dbusmenu.Menuitem.new()
-		qlList.append(qli)
+		#qli = Dbusmenu.Menuitem.new()
+		#qlList.append(qli)
+		qlList.append(Dbusmenu.Menuitem.new())
 #</initialize_launchers()>
 
 def make_ql():
 	global launcherList, qlList
 	for i in range(len(launcherList)):
-			launcherList[i].set_property("quicklist", qlList[i])
+			launcherList[i].set_property("quicklist", qlList[i]) #launcherList entries are Unity.LauncherEntry objects
+	
 #</make_ql>
 
 #--------------------------------- (further) main commands--------------------------------
