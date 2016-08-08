@@ -262,7 +262,6 @@ def check_item_activated(menuitem, a, location):
 #(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
 	global manager, appexecs, qlList, logger
 	pos = 0
-	print("nuke activated, please confirm with your 5,25\" floppy")
 	# menuitem is a Dbusmenu.Menuitem object, it's the entry of the recent file
 	for i in range(len(qlList)):
 		if (menuitem.get_parent() == qlList[i]):#get its parent, aka the launcher under which it's seated
