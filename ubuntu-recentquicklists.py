@@ -143,28 +143,27 @@ def get_apps():
 	launchers = []#"icons" in taskbar
 	appexecslist = []#how the icon opens stuff
 	mimetypes = []#which types of stuff an app thinks it can open
-
+	seperatorsneeded = []
 	
 	curr_launcher = current_launcher()
 	for i in range(len(curr_launcher)):		
 		if "application://" in curr_launcher[i]:
 			#only get apps (there are other items, such as a removable drives spacer, as well)
-			#because stuff has this format:
 			#http://askubuntu.com/questions/157281/how-do-i-add-an-icon-to-the-unity-dock-not-drag-and-drop/157288#157288
 			curr_launcher[i]=curr_launcher[i].replace("application://","")
-			#make kde4 apps work as well, yay!!
-			#change its prefix to a folder, as in usr/share/applications it has its folder
+			#make kde4 apps work as well, yay!! :
+			#change their prefix to a folder, as in /usr/share/applications they have their own folder
 			curr_launcher[i]=curr_launcher[i].replace("kde4-","kde4/")
 			
 			
 			config = configparser.SafeConfigParser()
-			#in the following folder the actual desktop-files sit (which are queried for the exec &mimetype, anyway)
+			#folder where the launcher's desktop-files sit
 			config.read("/usr/share/applications/"+curr_launcher[i])
 			if config.has_option("Desktop Entry","MimeType"):
 				if config.has_option("Desktop Entry","Exec"):
 						logger.warning(curr_launcher[i])
 						mimetypes.append(config.get("Desktop Entry","MimeType"))
-						#raw-->True ignores special characters and imports them "as-is"
+						#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
 						appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
 						#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
 						curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
@@ -189,24 +188,36 @@ def get_apps():
 
 
 def get_conv_apps():
-	appfiles,mimetypes_raw,appexecslist=get_apps()
-	applaunchers = []
+	global launcherList, mimetypes, appexecs
+	launcherList = []
 	mimetypes = []
+	launcherList = []
+	appexecs = []
+	
+	
+	appfiles,mimetypes,appexecs=get_apps()
+	
+	mimetypes=semiarraytolist(mimetypes)
+	
 	
 	for i in range(len(appfiles)):
-		applaunchers.append(Unity.LauncherEntry.get_for_desktop_id(appfiles[i]))
-
-	mimetypes=semiarraytolist(mimetypes_raw)
+		launcherList.append(Unity.LauncherEntry.get_for_desktop_id(appfiles[i]))
 	
 	
-	for i in range(len(appexecslist)):#these replace actions also throw away any possible other arguments,
-		appexecslist[i]=appexecslist[i].replace("%F","%U")#such as the okular "-caption %c" parameter, which isn't used here
-		appexecslist[i]=appexecslist[i].replace("%f","%U")
-		appexecslist[i]=appexecslist[i].replace("%u","%U")
-		head, sep, tail = appexecslist[i].partition('%U')
-		appexecslist[i]=head
+	for i in range(len(appexecs)):#these replace actions also throw away any possible other arguments,
+		appexecs[i]=appexecs[i].replace("%F","%U")#such as the okular "-caption %c" parameter, which isn't used here
+		appexecs[i]=appexecs[i].replace("%f","%U")
+		appexecs[i]=appexecs[i].replace("%u","%U")
+		head, sep, tail = appexecs[i].partition('%U')
+		appexecs[i]=head
 		
-	return applaunchers,mimetypes,appexecslist
+		
+	if not launcherList:
+		criticalx("no Launchers found!")
+	if not mimetypes:
+		criticalx("no Mimetypes found!")
+		
+	#values are global so don't need to be returned
 
 #</get_conv_apps>
 
@@ -251,7 +262,7 @@ def check_item_activated(menuitem, a, location):
 #(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
 	global manager, appexecs, qlList, logger
 	pos = 0
-	
+	print("nuke activated, please confirm with your 5,25\" floppy")
 	# menuitem is a Dbusmenu.Menuitem object, it's the entry of the recent file
 	for i in range(len(qlList)):
 		if (menuitem.get_parent() == qlList[i]):#get its parent, aka the launcher under which it's seated
@@ -275,7 +286,7 @@ def check_item_activated(menuitem, a, location):
 		criticalx("URQ: "+tail+" not found", text)
 		##logger.warning("File not found: "+location)
 		##manager.remove_item(location) #it got removed already, so just update the list
-		check_update()
+		update()
 
 #</check_item_activated>
 
@@ -291,15 +302,30 @@ def createItem(name, location, qlnummer):
 	#attach event handler "check_item_activated"
 	item.connect("item-activated", check_item_activated,location)
 	if not qlList[qlnummer].child_append(item)	:
-		logger.warning("dbusmenu-item %s failed to be created, quicklist can't be created!" % name)
+		criticalx("dbusmenu-item %s failed to be created" % name)
 	else:
 		logger.info("added "+location)
 
 #</createItem>
 
 
-def update():
+def update(a=None):
+	#called on gtk_recent_manager "changed"-event
+	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
 	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger
+	
+		
+	#old quicklists have to be deleted before updating, otherwise new items would be appended
+	for i in range(len(qlList)):
+		for c in qlList[i].get_children():
+			qlList[i].child_delete(c)
+	
+	#add entries if there are too little
+	while (len(qlList)<len(launcherList)):
+		qlList.append(Dbusmenu.Menuitem.new())
+	
+	
+			
 	list = manager.get_items()
 	logger.warning("updating, i've got "+str(len(list))+"unfiltered items")
 	infoList = []
@@ -324,9 +350,6 @@ def update():
 	
 	logger.warning("now, "+str(x)+" items are good to go ")			
 
-	#create empty list
-	#for i in range((len(infoList))):
-
 	
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0 :#if there are items to be added
@@ -344,7 +367,6 @@ def update():
 	#</ i in infoList>	
 	
 	
-	
 	#add seperators
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0:#only add seperator if there are recent files for this launcher
@@ -353,84 +375,41 @@ def update():
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 				qlList[i].child_append (separator)
-				
+	#</ i in infoList>	
+		
 #</update>
 
 
-#called on gtk_recent_manager "changed"-event
-def check_update(a=None):
-	#per definition, the a parameter has to be here, altough unused
-	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-
-	##initialize_launchers()#on filechanges a new/rem. launcher gets recognized
-	##make_ql()#and the quicklist gets generated
-	##manager.connect("changed",check_update)#and connected
-	##that, however, doesn't work (beyond 1-3clicks) and results in the quicklist not executing anything
-	##maybe relaunch script itself, out of itself?
-
-
-	#old quicklists have to be deleted before updating, otherwise new items would be appended
-	for i in range(len(qlList)):
-		for c in qlList[i].get_children():
-			qlList[i].child_delete(c)
-	update()
-	
-#</check_update>
-
-
-def initialize_launchers():
-	global launcherList, appexecs, mimetypes, qlList
-
-	launcherList, mimetypes, appexecs = get_conv_apps()
-
-
-	if not launcherList:
-		criticalx("no Launchers found!")
-	if not mimetypes:
-		criticalx("no Mimetypes found!")
-
-
-
-	#register quicklist
-	qlList = []
-	for i in range(len(launcherList)):
-		qlList.append(Dbusmenu.Menuitem.new())
-
-#</initialize_launchers()>
-
-
-def make_ql():
-	global launcherList, qlList
+def reg_ql():#register quicklist
+	global launcherList, qlList, manager
 	for i in range(len(launcherList)):
 			launcherList[i].set_property("quicklist", qlList[i]) #launcherList entries are Unity.LauncherEntry objects
-	
-#</make_ql>
+			
+	#connect function "update" as a handler to the signal "changed" (called when gtk's recent files list changes)
+	#(lookup "pygtk gobject.GObject.connect")
+	manager.connect("changed",update)
+#</reg_ql>
 
 
 #--------------------------------- main --------------------------------
 def main():
-	global mimetypes, appexecs, launcherList, seperatorsneeded, manager
-	global onlycritical, verboselogging, Path, logger
-	#global variables: not the nicest, but i don't want to write a 1000 things into each fct call either..
-
-	
-	mimetypes = []#which types of stuff an app thinks it can open
-	appexecs = []#how the taskbar-icon opens stuff
-	launcherList = []
-	seperatorsneeded = []
+	global manager, onlycritical, verboselogging, Path, logger
+	global qlList
+	#global variables: not the best, but i don't want to write a 1000 things into each fct call either..
 
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
 	configread()
 
+	logfile=Path+"/"+"urq.out"
 	#logging switches
 	if (onlycritical):
-		logger = log3.setup(Path+"/"+"ubuntu-recentquicklists.out",logging.CRITICAL)
+		logger = log3.setup(logfile,logging.CRITICAL)
 	elif (verboselogging):
-		logger = log3.setup(Path+"/"+"ubuntu-recentquicklists.out",logging.INFO)
+		logger = log3.setup(logfile,logging.INFO)
 	else:
-		logger = log3.setup(Path+"/"+"ubuntu-recentquicklists.out",logging.WARNING)
+		logger = log3.setup(logfile,logging.WARNING)
 
 	logger.warning("----Start-----")
 	if startupsplash:
@@ -453,16 +432,13 @@ def main():
 		criticalx("Gtk recentmanager FAILED to load!!","Abandon Ship!")
 
 
-	initialize_launchers()
-
-	#update on startup
+		
+	get_conv_apps()
+	qlList = []
+	
 	update()
 
-	#connect the handler "check_update" to the signal "changed" (called when gtk's recent files list changes)
-	#(lookup "pygtk gobject.GObject.connect")
-	manager.connect("changed",check_update)
-
-	make_ql()#turn the dbus objects into unity launcher entries
+	reg_ql()#append the dbus objects to the unity launcher entries
 
 	logger.warning("all set, entering main loop (wait for changes)")
 
