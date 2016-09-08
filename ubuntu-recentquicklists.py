@@ -18,19 +18,20 @@ from gi.repository import Notify as notify#notification bubble
 import log3
 import logging.handlers #logging.WARNING and so on
 
-
 #------------------function definitions------------------------
 #main is at the bottom of this script
 
 
-def configread():#https://docs.python.org/3/library/configparser.html
+def mainconfigread():#https://docs.python.org/3/library/configparser.html
 	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath, maxentriesperlist
 	global Path
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
-	missingentries=False
+	missingentries = False
 	
+	g_sections = ["maxage", "onlycritical", "verboselogging", "startupsplash", "shortnagging", "showfullpath", "maxentriesperlist"]
+	g_defaults = ["7",		"True",			"False", 			"True",			"False",		"False",		"10"			]
 	
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
@@ -41,35 +42,14 @@ def configread():#https://docs.python.org/3/library/configparser.html
 		config.add_section("General")
 		missingentries=True
 
-	if not config.has_option("General","maxage"):
-		config.set("General","maxage","7")
-		missingentries=True
+		
+	for i in range(len(g_sections)):		
+		if not config.has_option("General",g_sections[i]):
+			config.set("General",g_sections[i],g_defaults[i])
+			missingentries=True
 
-	if not config.has_option("General","onlycritical"):
-		config.set("General","onlycritical","True")	
-		missingentries=True
-		
-	if not config.has_option("General","verboselogging"):
-		config.set("General","verboselogging","False")
-		missingentries=True
-		
-	if not config.has_option("General","startupsplash"):
-		config.set("General","startupsplash","True")	
-		missingentries=True
-		
-	if not config.has_option("General","shortnagging"):
-		config.set("General","shortnagging","False")
-		missingentries=True
-		
-	if not config.has_option("General","showfullpath"):
-		config.set("General","showfullpath","False")
-		missingentries=True
-		
-	if not config.has_option("General","maxentriesperlist"):
-		config.set("General","maxentriesperlist","10")
-		missingentries=True
-		
-		
+
+	
 	#create missing entries with default values, if there are any
 	if missingentries:
 		with open(cfile, 'w') as configfile:
@@ -84,8 +64,37 @@ def configread():#https://docs.python.org/3/library/configparser.html
 	showfullpath=config.getboolean("General","showfullpath")
 	maxentriesperlist=config.getint("General","maxentriesperlist")
 	
-#</configread>
+#</mainconfigread>
 
+def appconfigread():#https://docs.python.org/3/library/configparser.html
+	global Path, appfiles
+	config = configparser.SafeConfigParser()
+	config.optionxform = lambda opt: opt#reason:
+	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
+	missingentries = False
+	
+	a_sections = []
+	
+	#open the config file
+	cfile=Path+'/'+"urq.conf"
+	config.read(cfile)
+
+	#create sections for each launcher	
+	for i in range(len(appfiles)):		
+		if not config.has_section(appfiles[i]):
+			print(appfiles[i])
+			config.add_section(appfiles[i])
+			missingentries=True
+
+			
+	#create missing entries with default values, if there are any
+	if missingentries:
+		with open(cfile, 'w') as configfile:
+			config.write(configfile)
+
+	#$$$here, stuff should be read and put into a variables list...
+	
+#</appconfigread>
 
 def criticalx(title,msg=""):#displays bubble and loggs as well
 	if (msg==""):#passing only one string triggers..
@@ -157,8 +166,12 @@ def get_apps():
 			
 			
 			config = configparser.SafeConfigParser()
-			#folder where the launcher's desktop-files sit
-			config.read("/usr/share/applications/"+curr_launcher[i])
+			#folders where the launcher's desktop-files sit
+			config.read("/usr/share/applications/"+curr_launcher[i])#,"~/.local/share/applications/"+curr_launcher[i])
+			#$$$ add a try-except to prevent wrongly formatted stuff from crashing the thing
+			#(I'm looking at you, "nemo.desktop", from the commented-out secondary folder ..)
+			#https://docs.python.org/2/tutorial/errors.html
+			
 			if config.has_option("Desktop Entry","MimeType"):
 				if config.has_option("Desktop Entry","Exec"):
 						logger.warning(curr_launcher[i])
@@ -188,7 +201,7 @@ def get_apps():
 
 
 def get_conv_apps():
-	global launcherList, mimetypes, appexecs
+	global launcherList, mimetypes, appexecs, appfiles #appfiles later necessary for appconfigread
 	launcherList = []
 	mimetypes = []
 	launcherList = []
@@ -295,6 +308,7 @@ def createItem(name, location, qlnummer):
 	global qlList, appexecs, logger
 	
 	item = Dbusmenu.Menuitem.new()
+	name=name.replace("_","__")#escape the underscore with a second one, a single one would make an underline
 	#this only creates an item with a name, the exec association happens in check_item_activated
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
@@ -399,7 +413,7 @@ def main():
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
-	configread()
+	mainconfigread()
 
 	logfile=Path+"/"+"urq.out"
 	#logging switches
@@ -433,6 +447,8 @@ def main():
 
 		
 	get_conv_apps()
+	appconfigread()
+	
 	qlList = []
 	
 	update()
