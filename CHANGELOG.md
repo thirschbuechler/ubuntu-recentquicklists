@@ -1,5 +1,15 @@
 ##currently new master-branch features:
-none
+
+####pinnedfiles: files can be pinned via the config file:
+- run the script, it generates a config-section for each launcher
+- add pinnedfiles = ~/Desktop/file1.txt;/data/file2.txt
+- also, the option to set maxentriesperlist for each launcher individually
+- restart the script after changing the config file (or log-off and log-on again if you've configured autorun, if you want to)
+
+
+minor fix: filenames' underscores get displayed properly
+
+
 
 #V1.1
 ##fixed:
