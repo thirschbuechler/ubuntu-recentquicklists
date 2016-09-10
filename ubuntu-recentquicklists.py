@@ -66,14 +66,25 @@ def mainconfigread():#https://docs.python.org/3/library/configparser.html
 	
 #</mainconfigread>
 
+
+class app_config_entry:
+	maxentriesperlist = -1
+
+#</class app_config_entry>
+
+
 def appconfigread():#https://docs.python.org/3/library/configparser.html
 	global Path, appfiles
+	global maxentriesperlist
+	global customappconfigs
+
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 	missingentries = False
 	
 	a_sections = []
+	customappconfigs = []
 	
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
@@ -81,10 +92,16 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 
 	#create sections for each launcher	
 	for i in range(len(appfiles)):		
+		customappconfigs.append(app_config_entry());
 		if not config.has_section(appfiles[i]):
 			print(appfiles[i])
-			config.add_section(appfiles[i])
+			config.add_section(appfiles[i])#add the section, don't add the option if it's missing
 			missingentries=True
+		elif (config.has_option(appfiles[i],"maxentriesperlist")):
+			customappconfigs[i].maxentriesperlist=config.getint(appfiles[i],"maxentriesperlist")
+		if (customappconfigs[i].maxentriesperlist==-1):#then, get the default value from the global setting
+			customappconfigs[i].maxentriesperlist=maxentriesperlist
+	#</forloop>
 
 			
 	#create missing entries with default values, if there are any
@@ -95,6 +112,7 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 	#$$$here, stuff should be read and put into a variables list...
 	
 #</appconfigread>
+
 
 def criticalx(title,msg=""):#displays bubble and loggs as well
 	if (msg==""):#passing only one string triggers..
@@ -367,7 +385,8 @@ def update(a=None):
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0 :#if there are items to be added
 			for info in sort(infoList[i]):
-				if (entriesperList[i]<maxentriesperlist):
+				#if (entriesperList[i]<maxentriesperlist):#customappconfigs
+				if (entriesperList[i]<customappconfigs[i].maxentriesperlist):
 					head, tail = os.path.split(info.get_uri_display())
 					##alternatively: tail=info.get_short_name ()
 					if not showfullpath:
