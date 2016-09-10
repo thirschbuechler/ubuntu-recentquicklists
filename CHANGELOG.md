@@ -1,5 +1,5 @@
 ##currently new master-branch features:
-none
+minor fix: filenames' underscores get displayed properly
 
 #V1.1
 ##fixed:
