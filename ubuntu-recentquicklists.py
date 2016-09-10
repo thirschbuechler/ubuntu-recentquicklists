@@ -295,6 +295,7 @@ def createItem(name, location, qlnummer):
 	global qlList, appexecs, logger
 	
 	item = Dbusmenu.Menuitem.new()
+	name=name.replace("_","__")#escape the underscore with a second one, a single one would make an underline
 	#this only creates an item with a name, the exec association happens in check_item_activated
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
