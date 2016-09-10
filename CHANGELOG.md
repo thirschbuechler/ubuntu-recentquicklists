@@ -4,7 +4,7 @@
 - run the updated script, it generates a config-section for each launcher in urq.conf
 - add files this way: "pinnedfiles = ~/Desktop/file1.txt;/data/file2.txt" (separated by semicolon)
 - restart the script after changing the config file (or log-off and log-on again if you've configured autorun, if you want to)
-- 
+ 
 also, the option to set maxentriesperlist for each launcher is now available
 minor fix: filenames' underscores get displayed properly
 
