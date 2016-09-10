@@ -9,14 +9,15 @@ from gi.repository import Notify as notify#notification bubble
 #notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 #http://candidtim.github.io/appindicator/2014/09/13/ubuntu-appindicator-step-by-step.html
 
+#custom logging
+import log3
+import logging.handlers #logging.WARNING and so on
+
 
 # --> comment
 ## --> old/alternative code
 
 
-#custom logging
-import log3
-import logging.handlers #logging.WARNING and so on
 
 #------------------function definitions------------------------
 #main is at the bottom of this script
@@ -69,6 +70,7 @@ def mainconfigread():#https://docs.python.org/3/library/configparser.html
 
 class app_config_entry:
 	maxentriesperlist = -1
+	pinnedfiles = []
 
 #</class app_config_entry>
 
@@ -76,7 +78,7 @@ class app_config_entry:
 def appconfigread():#https://docs.python.org/3/library/configparser.html
 	global Path, appfiles
 	global maxentriesperlist
-	global customappconfigs
+	global customappconfigs, mimetypes
 
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
@@ -85,11 +87,13 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 	
 	a_sections = []
 	customappconfigs = []
+	tmp = []
 	
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
 	config.read(cfile)
 
+	
 	#create sections for each launcher	
 	for i in range(len(appfiles)):		
 		customappconfigs.append(app_config_entry());
@@ -99,18 +103,26 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 			missingentries=True
 		elif (config.has_option(appfiles[i],"maxentriesperlist")):
 			customappconfigs[i].maxentriesperlist=config.getint(appfiles[i],"maxentriesperlist")
+		elif (config.has_option(appfiles[i],"pinnedfiles")):
+			tmp = []#list because semiarraytolist only handles lists
+			tmp.append(config.get(appfiles[i],"pinnedfiles",raw=True))
+			#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
+			customappconfigs[i].pinnedfiles=(semiarraytolist(tmp)[0])
+		
+		for j in range(len(customappconfigs[i].pinnedfiles)):
+			customappconfigs[i].pinnedfiles[j]=os.path.expanduser(customappconfigs[i].pinnedfiles[j])#this turns any tildes ('~') into absolute paths
+						
 		if (customappconfigs[i].maxentriesperlist==-1):#then, get the default value from the global setting
 			customappconfigs[i].maxentriesperlist=maxentriesperlist
+			
 	#</forloop>
 
-			
+
 	#create missing entries with default values, if there are any
 	if missingentries:
 		with open(cfile, 'w') as configfile:
 			config.write(configfile)
 
-	#$$$here, stuff should be read and put into a variables list...
-	
 #</appconfigread>
 
 
@@ -147,10 +159,12 @@ def isEven(number):
 
 
 #turns a list of strings of multiple elements into a list of all elements (semikolon-seperated)
+#only takes a list and turns it into another list! (can't take a string)
 def semiarraytolist(semi):
 	list=[]
 	for i in range(len(semi)):
 		list.append(semi[i].split(";"))
+		
 	return list
 
 #</semiarraytolist>
@@ -343,8 +357,8 @@ def createItem(name, location, qlnummer):
 def update(a=None):
 	#called on gtk_recent_manager "changed"-event
 	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger
-	
+	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs
+	tmp = ""
 		
 	#old quicklists have to be deleted before updating, otherwise new items would be appended
 	for i in range(len(qlList)):
@@ -381,6 +395,7 @@ def update(a=None):
 	
 	logger.warning("now, "+str(x)+" items are good to go ")			
 
+	#------------#   add recent files   #------------#
 	
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0 :#if there are items to be added
@@ -399,9 +414,39 @@ def update(a=None):
 	#</ i in infoList>	
 	
 	
-	#add seperators
+	#add seperators, if there are pinned files
 	for i in range(len(infoList)):
-		if len(infoList[i]) != 0:#only add seperator if there are recent files for this launcher
+		if len(infoList[i]) != 0:
+			if (customappconfigs[i].pinnedfiles):
+				separator = Dbusmenu.Menuitem.new ();
+				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+				qlList[i].child_append (separator)
+	#</ i in infoList>	
+		
+		
+	#------------#   add pinned files	  #------------#
+		
+	for i in range(len(customappconfigs)):
+		for j in range(len(customappconfigs[i].pinnedfiles)):
+			#if (entriesperList[i]<maxentriesperlist):#customappconfigs
+			tmp = customappconfigs[i].pinnedfiles[j]
+			#head, tail = reduce(os.path.split, tmp)
+			head, tail = os.path.split(tmp)
+			#head, tail = reduce
+			if not showfullpath:
+				createItem(tail, head+"/"+tail,i)#name, fullpath
+			else:
+				createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
+			entriesperList[i]=entriesperList[i]+1
+				
+			#</ j in customappconfigs>
+	#</ i in customappconfigs>	
+	
+	
+	#add seperators, if the launcher has actions below the files
+	for i in range(len(infoList)):
+		if len(infoList[i]) != 0:
 			if (seperatorsneeded[i]==1):
 				separator = Dbusmenu.Menuitem.new ();
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
@@ -423,7 +468,7 @@ def reg_ql():#register quicklist
 #</reg_ql>
 
 
-#--------------------------------- main --------------------------------
+#---------------------------------  main  --------------------------------
 def main():
 	global manager, onlycritical, verboselogging, Path, logger
 	global qlList
