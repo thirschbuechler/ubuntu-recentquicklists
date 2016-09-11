@@ -359,6 +359,7 @@ def update(a=None):
 	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
 	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs
 	tmp = ""
+	pinned=False
 		
 	#old quicklists have to be deleted before updating, otherwise new items would be appended
 	for i in range(len(qlList)):
@@ -400,16 +401,21 @@ def update(a=None):
 	for i in range(len(infoList)):
 		if len(infoList[i]) != 0 :#if there are items to be added
 			for info in sort(infoList[i]):
-				#if (entriesperList[i]<maxentriesperlist):#customappconfigs
 				if (entriesperList[i]<customappconfigs[i].maxentriesperlist):
-					head, tail = os.path.split(info.get_uri_display())
-					##alternatively: tail=info.get_short_name ()
-					if not showfullpath:
-						createItem(tail, head+"/"+tail,i)#name, fullpath
-					else:
-						createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
-					entriesperList[i]=entriesperList[i]+1
-				#</if maxage, maxentriesperlist>
+					pinned=False
+					for j in range(len(customappconfigs[i].pinnedfiles)):
+						if customappconfigs[i].pinnedfiles[j]==info.get_uri_display():
+							pinned=True
+							
+					if pinned==False:
+						head, tail = os.path.split(info.get_uri_display())
+						##alternatively: tail=info.get_short_name ()
+						if not showfullpath:
+							createItem(tail, head+"/"+tail,i)#name, fullpath
+						else:
+							createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
+						entriesperList[i]=entriesperList[i]+1
+				#</if  maxentriesperlist>
 			#</info in infoList>
 	#</ i in infoList>	
 	
@@ -429,11 +435,8 @@ def update(a=None):
 		
 	for i in range(len(customappconfigs)):
 		for j in range(len(customappconfigs[i].pinnedfiles)):
-			#if (entriesperList[i]<maxentriesperlist):#customappconfigs
 			tmp = customappconfigs[i].pinnedfiles[j]
-			#head, tail = reduce(os.path.split, tmp)
 			head, tail = os.path.split(tmp)
-			#head, tail = reduce
 			if not showfullpath:
 				createItem(tail, head+"/"+tail,i)#name, fullpath
 			else:
