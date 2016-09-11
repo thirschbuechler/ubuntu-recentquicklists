@@ -1,5 +1,7 @@
 ##currently new master-branch features:
 
+fixed: pinned files don't get added twice if they are also recent files
+
 ####filepinning via configfile:
 - run the updated script, it generates a config-section for each launcher in urq.conf
 - add files this way: "pinnedfiles = ~/Desktop/file1.txt;/data/file2.txt" (separated by semicolon)
@@ -7,7 +9,7 @@
  
 also, the option to set maxentriesperlist for each launcher is now available
 
-minor fix: filenames' underscores get displayed properly
+fixed: filenames' underscores get displayed properly
 
 
 
