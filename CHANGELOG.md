@@ -7,7 +7,10 @@ fixed: pinned files don't get added twice if they are also recent files
 - add files this way: "pinnedfiles = ~/Desktop/file1.txt;/data/file2.txt" (separated by semicolon)
 - restart the script after changing the config file (or log-off and log-on again if you've configured autorun, alternatively)
  
-also, the option to set maxentriesperlist for each launcher is now available
+####new options:
+- set maxentriesperlist individually for each launcher
+- setting 'resolvesymlinks = True' (general setting, defaults to False)
+ makes quicklists read "The_file" instead of "The_Link_to_the_file"
 
 fixed: filenames' underscores get displayed properly
 
