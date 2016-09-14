@@ -24,15 +24,15 @@ import logging.handlers #logging.WARNING and so on
 
 
 def mainconfigread():#https://docs.python.org/3/library/configparser.html
-	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath, maxentriesperlist
+	global maxage, onlycritical, startupsplash, shortnagging, verboselogging, showfullpath, maxentriesperlist, resolvesymlinks
 	global Path
 	config = configparser.SafeConfigParser()
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 	missingentries = False
 	
-	g_sections = ["maxage", "onlycritical", "verboselogging", "startupsplash", "shortnagging", "showfullpath", "maxentriesperlist"]
-	g_defaults = ["7",		"True",			"False", 			"True",			"False",		"False",		"10"			]
+	g_sections = ["maxage", "onlycritical", "verboselogging", "startupsplash", "shortnagging", "showfullpath", "maxentriesperlist", "resolvesymlinks"]
+	g_defaults = ["7",		"True",			"False", 			"True",			"False",		"False",		"10"			,	"False"]
 	
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
@@ -64,6 +64,7 @@ def mainconfigread():#https://docs.python.org/3/library/configparser.html
 	shortnagging=config.getboolean("General","shortnagging")
 	showfullpath=config.getboolean("General","showfullpath")
 	maxentriesperlist=config.getint("General","maxentriesperlist")
+	resolvesymlinks=config.getboolean("General","resolvesymlinks")
 	
 #</mainconfigread>
 
@@ -317,7 +318,7 @@ def check_item_activated(menuitem, a, location):
 	if os.path.exists(location):
 		logger.info("exec "+appexecs[pos]+ "\""+ location+"\"")
 		process = subprocess.Popen(appexecs[pos]+ "\""+ location+"\"",shell=True)#look up which program to use for this "location" (=path+filename)
-	else:#if what you wanted to open is gone
+	else:#if the thing you wanted to open is .. gone
 		#https://bugzilla.gnome.org/show_bug.cgi?id=137278
 		head, tail = os.path.split(location)#tail=filename
 		if not shortnagging:
@@ -335,7 +336,7 @@ def check_item_activated(menuitem, a, location):
 #</check_item_activated>
 
 
-#create quicklist entry as dbus menu item, not yet attached to Unity
+#create quicklist entry as dbus menu item (not attached to Unity at this point)
 def createItem(name, location, qlnummer):
 	global qlList, appexecs, logger
 	
@@ -357,7 +358,7 @@ def createItem(name, location, qlnummer):
 def update(a=None):
 	#called on gtk_recent_manager "changed"-event
 	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs
+	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks
 	tmp = ""
 	pinned=False
 		
@@ -374,23 +375,23 @@ def update(a=None):
 			
 	list = manager.get_items()
 	logger.warning("updating, i've got "+str(len(list))+"unfiltered items")
-	infoList = []
-	entriesperList = [] #counter per launcher slot (to make maxentriesperlist happen)
+	RecentFiles = []
+	entriesperList = [] #counter per launcher-slot (to make maxentriesperlist happen)
 	
 	for i in range(len(mimetypes)):
-		infoList.append([])#initialize infoList
+		RecentFiles.append([])#initialize emtpy RecentFiles
 		entriesperList.append(0)#and entriesperList
 
 
 	x=0
-	#only use files with a supported mimetype, populate infoList accordingly
+	#only use files with a supported mimetype, populate RecentFiles accordingly
 	for i in list:
 		if i.exists():#prevent deleted/moved/renamed "ghosts" of files showing up
 			for e in range(len(mimetypes)):
 				for g in range(len(mimetypes[e])):
 					if ((i.get_mime_type()==mimetypes[e][g]) and (i.get_age()<(maxage+1))):
 						x=x+1
-						infoList[e].append(i)
+						RecentFiles[e].append(i)
 	#</ i in list>	
 
 	
@@ -398,37 +399,40 @@ def update(a=None):
 
 	#------------#   add recent files   #------------#
 	
-	for i in range(len(infoList)):
-		if len(infoList[i]) != 0 :#if there are items to be added
-			for info in sort(infoList[i]):
+	for i in range(len(RecentFiles)):
+		if len(RecentFiles[i]) != 0 :#if there are items to be added
+			for info in sort(RecentFiles[i]):
 				if (entriesperList[i]<customappconfigs[i].maxentriesperlist):
 					pinned=False
-					for j in range(len(customappconfigs[i].pinnedfiles)):
+					for j in range(len(customappconfigs[i].pinnedfiles)):#see pinned==False
 						if customappconfigs[i].pinnedfiles[j]==info.get_uri_display():
 							pinned=True
 							
-					if pinned==False:
-						head, tail = os.path.split(info.get_uri_display())
+					if (pinned==False):#if this file isn't queued to be pinned later
+						tmp = info.get_uri_display()
+						if resolvesymlinks:
+							tmp = os.path.realpath(tmp)
+						head, tail = os.path.split(tmp)
 						##alternatively: tail=info.get_short_name ()
 						if not showfullpath:
-							createItem(tail, head+"/"+tail,i)#name, fullpath
+							createItem(tail, tmp,i)#name, fullpath
 						else:
-							createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
+							createItem(tmp, tmp,i)#fullpath, fullpath
 						entriesperList[i]=entriesperList[i]+1
 				#</if  maxentriesperlist>
-			#</info in infoList>
-	#</ i in infoList>	
+			#</info in RecentFiles>
+	#</ i in RecentFiles>	
 	
 	
 	#add seperators, if there are pinned files
-	for i in range(len(infoList)):
-		if len(infoList[i]) != 0:
-			if (customappconfigs[i].pinnedfiles):
+	for i in range(len(RecentFiles)):
+		if len(RecentFiles[i]) != 0:
+			if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):
 				separator = Dbusmenu.Menuitem.new ();
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 				qlList[i].child_append (separator)
-	#</ i in infoList>	
+	#</ i in RecentFiles>	
 		
 		
 	#------------#   add pinned files	  #------------#
@@ -448,14 +452,14 @@ def update(a=None):
 	
 	
 	#add seperators, if the launcher has actions below the files
-	for i in range(len(infoList)):
-		if len(infoList[i]) != 0:
-			if (seperatorsneeded[i]==1):
+	for i in range(len(RecentFiles)):
+		if len(RecentFiles[i]) != 0:
+			if (seperatorsneeded[i]==1 and customappconfigs[i].maxentriesperlist!=0):
 				separator = Dbusmenu.Menuitem.new ();
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 				qlList[i].child_append (separator)
-	#</ i in infoList>	
+	#</ i in RecentFiles>	
 		
 #</update>
 
@@ -463,6 +467,7 @@ def update(a=None):
 def reg_ql():#register quicklist
 	global launcherList, qlList, manager
 	for i in range(len(launcherList)):
+		if (customappconfigs[i].maxentriesperlist!=0):
 			launcherList[i].set_property("quicklist", qlList[i]) #launcherList entries are Unity.LauncherEntry objects
 			
 	#connect function "update" as a handler to the signal "changed" (called when gtk's recent files list changes)
@@ -507,9 +512,9 @@ def main():
 	#https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
 	manager = Gtk.RecentManager.get_default()
 	if manager:
-		logger.info("Gtk recentmanager loaded")
+		logger.info("Gtk Recentmanager loaded")
 	else:	
-		criticalx("Gtk recentmanager FAILED to load!!","Abandon Ship!")
+		criticalx("Gtk Recentmanager FAILED to load!!","Abandon Ship!")
 
 
 		
