@@ -20,7 +20,7 @@ import logging.handlers #logging.WARNING and so on
 
 
 #------------------function definitions------------------------
-#main is at the bottom of this script
+#main() is at the bottom of this script
 
 
 def mainconfigread():#https://docs.python.org/3/library/configparser.html
@@ -105,7 +105,7 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 		elif (config.has_option(appfiles[i],"maxentriesperlist")):
 			customappconfigs[i].maxentriesperlist=config.getint(appfiles[i],"maxentriesperlist")
 		elif (config.has_option(appfiles[i],"pinnedfiles")):
-			tmp = []#list because semiarraytolist only handles lists
+			tmp = []#is a list because semiarraytolist only handles lists
 			tmp.append(config.get(appfiles[i],"pinnedfiles",raw=True))
 			#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
 			customappconfigs[i].pinnedfiles=(semiarraytolist(tmp)[0])
@@ -159,7 +159,7 @@ def isEven(number):
 #</isEven>
 
 
-#turns a list of strings of multiple elements into a list of all elements (semikolon-seperated)
+#turns a list of strings of semicolon-seperated elements into a list of all elements 
 #only takes a list and turns it into another list! (can't take a string)
 def semiarraytolist(semi):
 	list=[]
@@ -171,7 +171,7 @@ def semiarraytolist(semi):
 #</semiarraytolist>
 
 
-#get launcher objects (not printable)
+#get launcher objects (not "print"-able)
 def current_launcher():
 	#http://askubuntu.com/questions/165147/bash-script-to-add-remove-desktop-launchers-to-unity-launcher
 	get_current = subprocess.check_output(["gsettings", "get", "com.canonical.Unity.Launcher", "favorites"]).decode("utf-8")
@@ -190,7 +190,7 @@ def get_apps():
 	curr_launcher = current_launcher()
 	for i in range(len(curr_launcher)):		
 		if "application://" in curr_launcher[i]:
-			#only get apps (there are other items, such as a removable drives spacer, as well)
+			#only get apps (there are other items, such as a removable drives, as well)
 			#http://askubuntu.com/questions/157281/how-do-i-add-an-icon-to-the-unity-dock-not-drag-and-drop/157288#157288
 			curr_launcher[i]=curr_launcher[i].replace("application://","")
 			#make kde4 apps work as well, yay!! :
@@ -200,10 +200,10 @@ def get_apps():
 			
 			config = configparser.SafeConfigParser()
 			#folders where the launcher's desktop-files sit
-			config.read("/usr/share/applications/"+curr_launcher[i])#,"~/.local/share/applications/"+curr_launcher[i])
-			#$$$ add a try-except to prevent wrongly formatted stuff from crashing the thing
-			#(I'm looking at you, "nemo.desktop", from the commented-out secondary folder ..)
-			#https://docs.python.org/2/tutorial/errors.html
+			config.read("/usr/share/applications/"+curr_launcher[i])
+			##this ("~/.local/share/applications/"+curr_launcher[i])) should be the user-editable folder for the unity dash,
+			##but it always crashes the configload, for every file, so  don't load from there (formatting error?)
+						
 			
 			if config.has_option("Desktop Entry","MimeType"):
 				if config.has_option("Desktop Entry","Exec"):
@@ -259,9 +259,9 @@ def get_conv_apps():
 		
 		
 	if not launcherList:
-		criticalx("no Launchers found!")
-	if not mimetypes:
-		criticalx("no Mimetypes found!")
+		criticalx("Launcher list empty!")
+	elif not mimetypes:#if there are launchers but no mimetype-list
+		criticalx("Mimetype list empty!")
 		
 	#values are global so don't need to be returned
 
@@ -280,7 +280,7 @@ def contains(list, item):
 
 #sort list by modification date (most recent first)
 def sort(list):
-	info = list[0]
+	lst = list[0]
 	geordList = []
 	
 	ageMax = 0
@@ -294,8 +294,8 @@ def sort(list):
 			if l.get_modified() >= ageMax:
 				if contains(geordList,l) == False:
 					ageMax = l.get_modified()
-					info = l
-		geordList.append(info)
+					lst = l
+		geordList.append(lst)
 		ageMax = 0
 		
 	return geordList
@@ -321,16 +321,16 @@ def check_item_activated(menuitem, a, location):
 	else:#if the thing you wanted to open is .. gone
 		#https://bugzilla.gnome.org/show_bug.cgi?id=137278
 		head, tail = os.path.split(location)#tail=filename
-		if not shortnagging:
+		
+		if not shortnagging:#prepare text
 			text = "sorry, Gtk Recentmanager doesn't track moved/deleted files. Reopen & close the file to renew its link."
 			text = text + "In case it got renamed, that happend now, so go back to the quicklist and try again"
 		else:
 			text = "(has been renamed/moved/deleted)"
-			##notify.Notification.new("<b>URQ: "+tail+" not found</b>", "(has been renamed/moved/deleted)", None).show()
-			##"<b>URQ: File not found</b>"
+
 		criticalx("URQ: "+tail+" not found", text)
-		##logger.warning("File not found: "+location)
 		##manager.remove_item(location) #it got removed already, so just update the list
+		
 		update()
 
 #</check_item_activated>
@@ -373,8 +373,8 @@ def update(a=None):
 	
 	
 			
-	list = manager.get_items()
-	logger.warning("updating, i've got "+str(len(list))+"unfiltered items")
+	raw_list = manager.get_items()
+	logger.warning("updating, i've got "+str(len(raw_list))+"unfiltered items")
 	RecentFiles = []
 	entriesperList = [] #counter per launcher-slot (to make maxentriesperlist happen)
 	
@@ -385,14 +385,14 @@ def update(a=None):
 
 	x=0
 	#only use files with a supported mimetype, populate RecentFiles accordingly
-	for i in list:
-		if i.exists():#prevent deleted/moved/renamed "ghosts" of files showing up
+	for item in raw_list:
+		if item.exists():#prevent deleted/moved/renamed "ghosts" of files showing up
 			for e in range(len(mimetypes)):
 				for g in range(len(mimetypes[e])):
-					if ((i.get_mime_type()==mimetypes[e][g]) and (i.get_age()<(maxage+1))):
+					if ((item.get_mime_type()==mimetypes[e][g]) and (item.get_age()<(maxage+1))):
 						x=x+1
-						RecentFiles[e].append(i)
-	#</ i in list>	
+						RecentFiles[e].append(item)
+	#</ item in raw_list>	
 
 	
 	logger.warning("now, "+str(x)+" items are good to go ")			
@@ -401,26 +401,26 @@ def update(a=None):
 	
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0 :#if there are items to be added
-			for info in sort(RecentFiles[i]):
+			for rf in sort(RecentFiles[i]):
 				if (entriesperList[i]<customappconfigs[i].maxentriesperlist):
 					pinned=False
 					for j in range(len(customappconfigs[i].pinnedfiles)):#see pinned==False
-						if customappconfigs[i].pinnedfiles[j]==info.get_uri_display():
+						if customappconfigs[i].pinnedfiles[j]==rf.get_uri_display():
 							pinned=True
 							
 					if (pinned==False):#if this file isn't queued to be pinned later
-						tmp = info.get_uri_display()
+						tmp = rf.get_uri_display()
 						if resolvesymlinks:
 							tmp = os.path.realpath(tmp)
 						head, tail = os.path.split(tmp)
-						##alternatively: tail=info.get_short_name ()
+						##alternatively: tail=rf.get_short_name ()
 						if not showfullpath:
 							createItem(tail, tmp,i)#name, fullpath
 						else:
 							createItem(tmp, tmp,i)#fullpath, fullpath
 						entriesperList[i]=entriesperList[i]+1
 				#</if  maxentriesperlist>
-			#</info in RecentFiles>
+			#</rf in RecentFiles>
 	#</ i in RecentFiles>	
 	
 	
@@ -480,7 +480,7 @@ def reg_ql():#register quicklist
 def main():
 	global manager, onlycritical, verboselogging, Path, logger
 	global qlList
-	#global variables: not the best, but i don't want to write a 1000 things into each fct call either..
+	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
 
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
@@ -504,9 +504,10 @@ def main():
 	#terminal info messages
 	print("")
 	print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
-	print("In that case, you may need to upgrade these modules or Ubuntu itself (before, manually open and close a document to see whether the recentmanager just got emptied unexpectedly)")
+	print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
 	print(" ")
 	print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-file")
+	print("(.. for the current release. Master branch features may only be documented in CHANGELOG.md, however)")
 
 
 	#https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
@@ -517,8 +518,8 @@ def main():
 		criticalx("Gtk Recentmanager FAILED to load!!","Abandon Ship!")
 
 
-		
 	get_conv_apps()
+	
 	appconfigread()
 	
 	qlList = []
