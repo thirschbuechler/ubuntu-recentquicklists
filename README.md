@@ -8,7 +8,8 @@ This script adds recent files (you can choose how many days old they might be) t
 
 Installation & Autorun:
 see https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Installation
+(in short: download/clone anywhere, make install.sh executable, run install.sh)
 
 Huge thanks to 
-https://forum.ubuntuusers.de/topic/libreoffice-unity-dynamische-quicklist/ (german post), which provided the framework to expand the functionality from being limited to libre-office to serve all applications.
+https://forum.ubuntuusers.de/topic/libreoffice-unity-dynamische-quicklist/ (german post), which provided the framework to expand the functionality from being limited to libreoffice to serve all applications.
 Also, stackexchange (in particular stackoverflow) helped a lot.
