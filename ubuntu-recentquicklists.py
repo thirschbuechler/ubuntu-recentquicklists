@@ -100,25 +100,30 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 		customappconfigs.append(app_config_entry());
 		if not config.has_section(appfiles[i]):
 			print(appfiles[i])
-			config.add_section(appfiles[i])#add the section, don't add the option if it's missing
+			config.add_section(appfiles[i])#add the section (but don't add the option if it's missing)
 			missingentries=True
-		elif (config.has_option(appfiles[i],"maxentriesperlist")):
-			customappconfigs[i].maxentriesperlist=config.getint(appfiles[i],"maxentriesperlist")
-		elif (config.has_option(appfiles[i],"pinnedfiles")):
-			tmp = []#is a list because semiarraytolist only handles lists
-			tmp.append(config.get(appfiles[i],"pinnedfiles",raw=True))
-			#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
-			customappconfigs[i].pinnedfiles=(semiarraytolist(tmp)[0])
-		
+		else:#if there is an entry in the config file, pull the settings
+			if (config.has_option(appfiles[i],"maxentriesperlist")):
+				customappconfigs[i].maxentriesperlist=config.getint(appfiles[i],"maxentriesperlist")
+			if (config.has_option(appfiles[i],"pinnedfiles")):
+				tmp = []#is a list because semiarraytolist only handles lists
+				tmp.append(config.get(appfiles[i],"pinnedfiles",raw=True))
+				#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
+				customappconfigs[i].pinnedfiles=(semiarraytolist(tmp)[0])			
+				
 		for j in range(len(customappconfigs[i].pinnedfiles)):
-			customappconfigs[i].pinnedfiles[j]=os.path.expanduser(customappconfigs[i].pinnedfiles[j])#this turns any tildes ('~') into absolute paths
-						
-		if (customappconfigs[i].maxentriesperlist==-1):#then, get the default value from the global setting
-			customappconfigs[i].maxentriesperlist=maxentriesperlist
+			customappconfigs[i].pinnedfiles[j]=os.path.expanduser(customappconfigs[i].pinnedfiles[j])#turn tildes ('~') into absolute paths
+		#</forloop j>
+
+		if (customappconfigs[i].maxentriesperlist==-1):#if there was no setting 
+			customappconfigs[i].maxentriesperlist=maxentriesperlist #get the general setting
 			
-	#</forloop>
+	#</forloop i>
+	
+	
+		
 
-
+	
 	#create missing entries with default values, if there are any
 	if missingentries:
 		with open(cfile, 'w') as configfile:
