@@ -487,6 +487,7 @@ def main():
 	global qlList
 	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
 
+	Version = "V1.2"
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
@@ -501,9 +502,9 @@ def main():
 	else:
 		logger = log3.setup(logfile,logging.WARNING)
 
-	logger.warning("----Start-----")
+	logger.warning("----"+Version+"Start-----")
 	if startupsplash:
-		notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists startup</b>", None).show()
+		notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists "+Version+" startup</b>", None).show()
 
 		
 	#terminal info messages
