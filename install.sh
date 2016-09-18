@@ -3,7 +3,7 @@ VERSION=V1.2
 
 function install
 {
-cp -r . /home/$USER/asdf #copy everything from the current folder there
+cp -r . /home/$USER/ubuntu-recentquicklists #copy everything from the current folder there
 autorun_prompt;
 }  
 
@@ -25,6 +25,8 @@ cp ubuntu-recentquicklists.py.desktop /home/$USER/.config/autostart/ubuntu-recen
 echo "autorun entry added"
 echo ""
 echo "you may now delete this temporary folder"
+
+bye;
 }
 
 function banner
@@ -67,10 +69,22 @@ function run_now
 {
 echo "Do you wish to run the script without installing?"
 echo "(inside this very folder. script will close when terminal closed)"
+echo "no sudo required, but it needs to be executable"
 select yn in "Yes" "No"; do
     case $yn in
         Yes ) ./ubuntu-recentquicklists.py break;;
         No ) exit;;
+    esac
+done
+}
+
+function bye
+{
+echo "now, just log off and on again to see it start,"
+echo "(also displays a notification bubble on startup)"
+select y in "Yes" ; do
+    case $yn in
+        Yes ) exit;;
     esac
 done
 }
