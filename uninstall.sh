@@ -11,6 +11,7 @@ function del_autorun
 rm -f /home/$USER/.config/autostart/ubuntu-recentquicklists.py.desktop
 echo "autorun entry deleted"
 echo ""
+uninstall_prompt
 }
 
 function banner
@@ -22,8 +23,8 @@ echo ---------------------------------------------
 
 function uninstall_prompt
 {
-banner;
-echo "Do you wish to uninstall this program or disable its autorun?"
+
+echo "Do you wish to uninstall this program completely (delete everything)?"
 echo "(Make sure to run this script from another folder for total"
 echo "removal: Copy it to Desktop or somewhere else and run from there,"
 echo " delete it afterwards"
@@ -37,6 +38,7 @@ done
 
 function autorun_prompt
 {
+banner;
 echo "Do you wish to delete the autorun entry?"
 echo "(in ~/.config/autostart)"
 echo "Can also be manipulated via the Ubuntu-app \"Startup-Applications\""
