@@ -1,20 +1,20 @@
 ##currently new master-branch features:
+none
+#V1.2
 
-fixed: pinned files don't get added twice if they are also recent files
-
-####filepinning via configfile:
-- run the updated script, it generates a config-section for each launcher in urq.conf
-- add files this way: "pinnedfiles = ~/Desktop/file1.txt;/data/file2.txt" (separated by semicolon)
-- restart the script after changing the config file (or log-off and log-on again if you've configured autorun, alternatively)
  
-####new options:
+##added:
 - set maxentriesperlist individually for each launcher
 - setting 'resolvesymlinks = True' (general setting, defaults to False)
  makes quicklists read "The_file" instead of "The_Link_to_the_file"
 
-fixed: filenames' underscores get displayed properly
+##fixed:
+- filenames' underscores get displayed properly
 
-
+##filepinning via configfile: (move to wiki-page)
+- run the updated script, it generates a config-section for each launcher in urq.conf
+- add files this way: "pinnedfiles = ~/Desktop/file1.txt;/data/file2.txt" (separated by semicolon)
+- restart the script after changing the config file (or log-off and log-on again if you've configured autorun, alternatively)
 
 #V1.1
 ##fixed:
