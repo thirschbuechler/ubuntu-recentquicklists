@@ -70,8 +70,12 @@ def mainconfigread():#https://docs.python.org/3/library/configparser.html
 
 
 class app_config_entry:
-	maxentriesperlist = -1
-	pinnedfiles = []
+	'config entry for each launcher'
+    
+	def __init__(self):#http://www.tutorialspoint.com/python/python_classes_objects.htm
+		self.pinnedfiles = []#http://stackoverflow.com/questions/1680528/how-do-i-avoid-having-python-class-data-shared-among-instances
+		self.maxentriesperlist = -1
+
 
 #</class app_config_entry>
 
@@ -130,6 +134,48 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 			config.write(configfile)
 
 #</appconfigread>
+
+
+def savepinnedfiles():
+	global Path, appfiles
+	global maxentriesperlist
+	global customappconfigs, mimetypes
+
+	config = configparser.SafeConfigParser()
+	config.optionxform = lambda opt: opt#reason:
+	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
+
+	
+	tmp = ""
+	
+	
+	#open the config file
+	cfile=Path+'/'+"urq.conf"
+	config.read(cfile)
+	print(" ")
+	print("in savepinnedstuff")
+	for i in range(len(appfiles)):
+		tmp = ""#for each launcher, collect all the pinned files:
+		for file in customappconfigs[i].pinnedfiles:
+			if len(file)>0:
+					tmp=tmp+";"+file
+					print(tmp)
+
+		if len(tmp)>0:
+						#print("adding "+tmp[1:]+" to "+appfiles[i])#add tmp without first character
+						#print("add to "+appfiles[i])#add tmp without first character
+
+			config.set(appfiles[i],"pinnedfiles",tmp)
+			tmp = ""
+		else:#0 pinnedfiles
+			config.remove_option(appfiles[i],"pinnedfiles")
+			
+	
+	cfile=Path+'/'+"urq.conf"
+	with open(cfile, 'w') as configfile:#save the configfile
+		config.write(configfile)
+
+#</savepinnedfiles>
 
 
 def criticalx(title,msg=""):#displays bubble and loggs as well
@@ -311,45 +357,89 @@ def sort(list):
 #this function gets called if something in a quicklist is clicked
 def check_item_activated(menuitem, a, location):
 #(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global manager, appexecs, qlList, logger
+	global manager, appexecs, qlList, logger, pinningmode, customappconfigs
 	pos = 0
 	# menuitem is a Dbusmenu.Menuitem object, it's the entry of the recent file
 	for i in range(len(qlList)):
 		if (menuitem.get_parent() == qlList[i]):#get its parent, aka the launcher under which it's seated
 			pos=i
-			break#exit for loop
+			break#exit for loop when element found
 			
+	
+	if location.startswith("pinningswitch"):#if the switch between pinningmode and normal (recent-files)mode is pressed
+		pinningmode = not pinningmode#turn it on/off
+		update()#make the list, but with checkboxes and don't launch anything
+		savepinnedfiles()#also, save the pinned files to the config file
+				
+	elif (pinningmode):#deal with the checkboxes -- this may break unity if acted on non-checkbox-entries, that's why it's an elif
+		
+		if menuitem.property_get_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE) == Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED:
+			#previously active means remove now
+			customappconfigs[i].pinnedfiles.remove(location)
+			menuitem.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
+			update()#to show changes
+		else:#previously inactive means add
+			customappconfigs[i].pinnedfiles.append(location)
+			menuitem.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
+			update()#to show changes
 			
-	if os.path.exists(location):
-		logger.info("exec "+appexecs[pos]+ "\""+ location+"\"")
-		process = subprocess.Popen(appexecs[pos]+ "\""+ location+"\"",shell=True)#look up which program to use for this "location" (=path+filename)
-	else:#if the thing you wanted to open is .. gone
-		#https://bugzilla.gnome.org/show_bug.cgi?id=137278
-		head, tail = os.path.split(location)#tail=filename
-		
-		if not shortnagging:#prepare text
-			text = "sorry, Gtk Recentmanager doesn't track moved/deleted files. Reopen & close the file to renew its link."
-			text = text + "In case it got renamed, that happend now, so go back to the quicklist and try again"
-		else:
-			text = "(has been renamed/moved/deleted)"
+	else:#not pinningswitch: normal recent-files operation, which means call the thing the user has clicked on
+			
+		if os.path.exists(location):#if there is a file to be opened, open it
+			logger.info("exec "+appexecs[pos]+ "\""+ location+"\"")
+			process = subprocess.Popen(appexecs[pos]+ "\""+ location+"\"",shell=True)#look up which program to use for this "location" (=path+filename)
 
-		criticalx("URQ: "+tail+" not found", text)
-		##manager.remove_item(location) #it got removed already, so just update the list
-		
-		update()
+		else:#if the thing is gone
+			#https://bugzilla.gnome.org/show_bug.cgi?id=137278
+			head, tail = os.path.split(location)#tail=filename
 
+			if not shortnagging:#prepare text
+				text = "sorry, Gtk Recentmanager doesn't track moved/deleted files. Reopen & close the file to renew its link."
+				text = text + "In case it got renamed, that happend now, so go back to the quicklist and try again"
+			else:
+				text = "(has been renamed/moved/deleted)"
+
+			criticalx("URQ: "+tail+" not found", text)
+			##manager.remove_item(location) #it got removed already, so just update the list
+
+			update()
+		#</else: gone>
+	#</location.startswith pinningswitch>
+	
 #</check_item_activated>
 
 
 #create quicklist entry as dbus menu item (not attached to Unity at this point)
 def createItem(name, location, qlnummer):
-	global qlList, appexecs, logger
+	global qlList, appexecs, logger, pinningmode
 	
 	item = Dbusmenu.Menuitem.new()
 	name=name.replace("_","__")#escape the underscore with a second one, a single one would make an underline
 	#this only creates an item with a name, the exec association happens in check_item_activated
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+	
+	if (pinningmode):
+			item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)#set checkbox properties if in pinning mode
+			if location.startswith("pinningswitch"):
+				if pinningmode:
+					item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#then it gets a checkmark
+				##else:
+				##	item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
+				##moved down
+				
+			else:#if its a recentfiles-entry
+				item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
+				for j in range(len(customappconfigs[qlnummer].pinnedfiles)):
+					#print(customappconfigs[qlnummer].pinnedfiles[j])
+					if customappconfigs[qlnummer].pinnedfiles[j].startswith(location):#check if this entry is pinned
+						item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#then it gets a checkmark
+					#else:
+						#item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
+	elif location.startswith("pinningswitch"):
+		item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
+	#<if pinningmode>
+		
 	#attach event handler "check_item_activated"
 	item.connect("item-activated", check_item_activated,location)
 	if not qlList[qlnummer].child_append(item)	:
@@ -414,7 +504,7 @@ def update(a=None):
 							pinned=True
 							
 					if (pinned==False):#if this file isn't queued to be pinned later
-						tmp = rf.get_uri_display()
+						tmp = rf.get_uri_display()#get path
 						if resolvesymlinks:
 							tmp = os.path.realpath(tmp)
 						head, tail = os.path.split(tmp)
@@ -429,19 +519,19 @@ def update(a=None):
 	#</ i in RecentFiles>	
 	
 	
-	#add seperators, if there are pinned files
+	#add pinning seperator
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0:
-			if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):
-				separator = Dbusmenu.Menuitem.new ();
-				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-				qlList[i].child_append (separator)
+			##if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):#if there was no pinning switch this should be checked
+			separator = Dbusmenu.Menuitem.new ();
+			separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+			separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+			qlList[i].child_append (separator)
 	#</ i in RecentFiles>	
 		
 		
 	#------------#   add pinned files	  #------------#
-		
+	
 	for i in range(len(customappconfigs)):
 		for j in range(len(customappconfigs[i].pinnedfiles)):
 			tmp = customappconfigs[i].pinnedfiles[j]
@@ -454,6 +544,10 @@ def update(a=None):
 				
 			#</ j in customappconfigs>
 	#</ i in customappconfigs>	
+	
+	#------------#   add pinning switch	  #------------#
+	for i in range(len(RecentFiles)):#pinningmode switch
+		createItem("[file pinning]", "pinningswitch",i)
 	
 	
 	#add seperators, if the launcher has actions below the files
@@ -484,10 +578,11 @@ def reg_ql():#register quicklist
 #---------------------------------  main  --------------------------------
 def main():
 	global manager, onlycritical, verboselogging, Path, logger
-	global qlList
+	global qlList, pinningmode
 	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
 
-	Version = "V1.2"
+	Version = "V1.2.x"
+	pinningmode=False
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
