@@ -6,9 +6,9 @@ none
 ##added:
 - filepinning via menu
 - installation and update scripts
-- set maxentriesperlist individually for each launcher
-- setting 'resolvesymlinks = True' (general setting, defaults to False)
- makes quicklists read "The_file" instead of "The_Link_to_the_file"
+- option to set maxentriesperlist individually for each launcher
+- option resolvesymlinks (general setting, defaults to False)
+ to make quicklists read "The_file" instead of "The_Link_to_the_file"
 
 ##fixed:
 - filenames' underscores get displayed properly
