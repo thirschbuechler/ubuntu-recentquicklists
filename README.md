@@ -1,10 +1,9 @@
 # ubuntu-recentquicklists
 
-Finally, there are recent-files quicklists for Ubuntu, as Windows already has for quite some time.
-This script adds recent files (you can choose how many days old they might be) to the right-click on the unity-dash's launchers (locked-to-launcher-apps in taskbar).
+Finally, there is an automated recent-files quicklist script for Ubuntu, as Windows already has for quite some time.
+It adds recent files (you can choose how many days old they might be) to the right-click on the unity-dash's launchers (locked-to-launcher-apps in taskbar) and allows to pin important files there permanently, as well.
 
-![alt tag](urq%20screenie.png)
-![alt tag](urq%20screenie2.png)
+![alt tag](urq-screenie.png)
 
 Installation & Autorun:
 see https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Installation
