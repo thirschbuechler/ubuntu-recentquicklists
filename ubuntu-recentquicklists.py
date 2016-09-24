@@ -103,8 +103,7 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 	for i in range(len(appfiles)):		
 		customappconfigs.append(app_config_entry());
 		if not config.has_section(appfiles[i]):
-			print(appfiles[i])
-			config.add_section(appfiles[i])#add the section (but don't add the option if it's missing)
+#			config.add_section(appfiles[i])#add the section (but don't add the option if it's missing)
 			missingentries=True
 		else:#if there is an entry in the config file, pull the settings
 			if (config.has_option(appfiles[i],"maxentriesperlist")):
@@ -145,26 +144,20 @@ def savepinnedfiles():
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 
-	
 	tmp = ""
-	
 	
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
 	config.read(cfile)
-	print(" ")
-	print("in savepinnedstuff")
+
+	
 	for i in range(len(appfiles)):
 		tmp = ""#for each launcher, collect all the pinned files:
 		for file in customappconfigs[i].pinnedfiles:
 			if len(file)>0:
 					tmp=tmp+";"+file
-					print(tmp)
 
 		if len(tmp)>0:
-						#print("adding "+tmp[1:]+" to "+appfiles[i])#add tmp without first character
-						#print("add to "+appfiles[i])#add tmp without first character
-
 			config.set(appfiles[i],"pinnedfiles",tmp)
 			tmp = ""
 		else:#0 pinnedfiles
@@ -431,7 +424,6 @@ def createItem(name, location, qlnummer):
 			else:#if its a recentfiles-entry
 				item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
 				for j in range(len(customappconfigs[qlnummer].pinnedfiles)):
-					#print(customappconfigs[qlnummer].pinnedfiles[j])
 					if customappconfigs[qlnummer].pinnedfiles[j].startswith(location):#check if this entry is pinned
 						item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#then it gets a checkmark
 					#else:
@@ -499,16 +491,17 @@ def update(a=None):
 			for rf in sort(RecentFiles[i]):
 				if (entriesperList[i]<customappconfigs[i].maxentriesperlist):
 					pinned=False
+					tmp = rf.get_uri_display()#get path
+					if resolvesymlinks:
+						tmp = os.path.realpath(tmp)
+					head, tail = os.path.split(tmp)
+						##alternatively: tail=rf.get_short_name ()
 					for j in range(len(customappconfigs[i].pinnedfiles)):#see pinned==False
-						if customappconfigs[i].pinnedfiles[j]==rf.get_uri_display():
+						if customappconfigs[i].pinnedfiles[j]==tmp:
 							pinned=True
 							
 					if (pinned==False):#if this file isn't queued to be pinned later
-						tmp = rf.get_uri_display()#get path
-						if resolvesymlinks:
-							tmp = os.path.realpath(tmp)
-						head, tail = os.path.split(tmp)
-						##alternatively: tail=rf.get_short_name ()
+						
 						if not showfullpath:
 							createItem(tail, tmp,i)#name, fullpath
 						else:
@@ -522,11 +515,12 @@ def update(a=None):
 	#add pinning seperator
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0:
-			##if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):#if there was no pinning switch this should be checked
-			separator = Dbusmenu.Menuitem.new ();
-			separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-			separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-			qlList[i].child_append (separator)
+			if (entriesperList[i] != 0):#only add seperator if there are "normal" non-pinned recentfiles above
+				##if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):#if there was no pinning switch this should be checked
+				separator = Dbusmenu.Menuitem.new ();
+				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+				qlList[i].child_append (separator)
 	#</ i in RecentFiles>	
 		
 		
@@ -581,7 +575,7 @@ def main():
 	global qlList, pinningmode
 	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
 
-	Version = "V1.2.x"
+	Version = "V1.2.1"
 	pinningmode=False
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
@@ -603,6 +597,8 @@ def main():
 
 		
 	#terminal info messages
+	print("")
+	print("Ubuntu-recentquicklists "+Version+" startup")
 	print("")
 	print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
 	print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
