@@ -1,7 +1,8 @@
 ##currently new master-branch features:
 * fixed a pinningfile-issue which may prevent pinnedfiles to be saved to config-file
-#V1.2.1
+* maxentriesplerist=0 now allows prevents ubuntu-recentquicklists from overwriting a previously existing dynamic-quicklist on a particular launcher (e.g. on nemo-filemanager)
 
+#V1.2.1
  
 ##added:
 - filepinning via menu
