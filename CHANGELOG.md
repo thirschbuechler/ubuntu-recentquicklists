@@ -1,5 +1,5 @@
 ##currently new master-branch features:
-none
+* fixed a pinningfile-issue which may prevent pinnedfiles to be saved to config-file
 #V1.2.1
 
  
