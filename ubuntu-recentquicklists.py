@@ -134,6 +134,26 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 
 #</appconfigread>
 
+def excluded(launcher_x):#https://docs.python.org/3/library/configparser.html
+	global Path, appfiles
+
+	config = configparser.SafeConfigParser()
+	config.optionxform = lambda opt: opt#reason:
+	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
+	val = False
+	
+	#open the config file
+	cfile=Path+'/'+"urq.conf"
+	config.read(cfile)
+
+	if (config.has_section(launcher_x) and config.has_option(launcher_x,"maxentriesperlist")):
+		if (config.getint(launcher_x,"maxentriesperlist")==0):
+			val = True
+			
+	return val
+
+#</excluded>
+
 
 def savepinnedfiles():
 	global Path, appfiles
@@ -252,29 +272,30 @@ def get_apps():
 			##this ("~/.local/share/applications/"+curr_launcher[i])) should be the user-editable folder for the unity dash,
 			##but it always crashes the configload, for every file, so  don't load from there (formatting error?)
 						
-			
-			if config.has_option("Desktop Entry","MimeType"):
-				if config.has_option("Desktop Entry","Exec"):
-						logger.warning(curr_launcher[i])
-						mimetypes.append(config.get("Desktop Entry","MimeType"))
-						#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
-						appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
-						#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
-						curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
-						launchers.append(curr_launcher[i])
-						if ( config.has_option("Desktop Entry","Actions") or config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts") ):
-							seperatorsneeded.append(1)
-						else:
-							seperatorsneeded.append(0)
+			if not excluded(curr_launcher[i]):
+				if config.has_option("Desktop Entry","MimeType"):
+					if config.has_option("Desktop Entry","Exec"):
+							logger.warning(curr_launcher[i]+" is a quicklist candidate")
+							mimetypes.append(config.get("Desktop Entry","MimeType"))
+							#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
+							appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
+							#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
+							curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
+							launchers.append(curr_launcher[i])
+							if ( config.has_option("Desktop Entry","Actions") or config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts") ):
+								seperatorsneeded.append(1)
+							else:
+								seperatorsneeded.append(0)
+					else:
+							logger.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
+							logger.warning("have a look at the github-wiki:compatibility-manual_adding")
+
+
 				else:
-						logger.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
-						logger.warning("have a look at the github-wiki:compatibility-manual_adding")
-						
-
+					logger.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
+					logger.warning("have a look at the github-wiki:compatibility-manual_adding")
 			else:
-				logger.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
-				logger.warning("have a look at the github-wiki:compatibility-manual_adding")
-
+				logger.warning(curr_launcher[i]+" has been excluded via maxentriesperlist=0")
 				
 	return launchers,mimetypes,appexecslist
 
@@ -465,7 +486,7 @@ def update(a=None):
 	
 			
 	raw_list = manager.get_items()
-	logger.warning("updating, i've got "+str(len(raw_list))+"unfiltered items")
+	logger.warning("updating, got "+str(len(raw_list))+"unfiltered items")
 	RecentFiles = []
 	entriesperList = [] #counter per launcher-slot (to make maxentriesperlist happen)
 	
@@ -618,7 +639,7 @@ def main():
 	else:	
 		criticalx("Gtk Recentmanager FAILED to load!!","Abandon Ship!")
 
-
+		
 	get_conv_apps()
 	
 	appconfigread()
