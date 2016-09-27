@@ -103,7 +103,7 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 	for i in range(len(appfiles)):		
 		customappconfigs.append(app_config_entry());
 		if not config.has_section(appfiles[i]):
-#			config.add_section(appfiles[i])#add the section (but don't add the option if it's missing)
+			config.add_section(appfiles[i])#add the section (but don't add the option if it's missing)
 			missingentries=True
 		else:#if there is an entry in the config file, pull the settings
 			if (config.has_option(appfiles[i],"maxentriesperlist")):
