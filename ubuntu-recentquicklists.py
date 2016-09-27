@@ -600,7 +600,7 @@ def main():
 	global qlList, pinningmode
 	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
 
-	Version = "V1.2.1x"
+	Version = "V1.2.2"
 	pinningmode=False
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
