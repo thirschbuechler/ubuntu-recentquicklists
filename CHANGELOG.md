@@ -3,7 +3,7 @@ none
 
 #V1.2.2
 * fixed a pinningfile-issue which may prevent pinnedfiles to be saved to config-file
-* maxentriesplerist=0 now allows prevents ubuntu-recentquicklists from overwriting a previously existing dynamic-quicklist on a particular launcher (e.g. on nemo-filemanager)
+* maxentriesperlist=0 now allows prevents ubuntu-recentquicklists from overwriting a previously existing dynamic-quicklist on a particular launcher (e.g. on nemo-filemanager)
 * fixed a bad comment which prevented new configfile-sections from being created
 
 #V1.2.1
