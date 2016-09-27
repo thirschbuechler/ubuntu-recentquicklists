@@ -160,8 +160,12 @@ def savepinnedfiles():
 		if len(tmp)>0:
 			config.set(appfiles[i],"pinnedfiles",tmp)
 			tmp = ""
+			logger.info("saved pinnedfiles of launcher "+appfiles[i])
+			
 		else:#0 pinnedfiles
-			config.remove_option(appfiles[i],"pinnedfiles")
+			if (config.has_section(appfiles[i]) and config.has_option(appfiles[i],"pinnedfiles")):
+				config.remove_option(appfiles[i],"pinnedfiles")
+				logger.info("removed all pinnedfiles from launcher "+appfiles[i])
 			
 	
 	cfile=Path+'/'+"urq.conf"
@@ -575,7 +579,7 @@ def main():
 	global qlList, pinningmode
 	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
 
-	Version = "V1.2.1"
+	Version = "V1.2.1x"
 	pinningmode=False
 	
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
