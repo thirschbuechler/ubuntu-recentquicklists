@@ -1,5 +1,7 @@
 ##currently new master-branch features:
-none
+* added filepinning-seperator option: In urq.conf, a seperator can be added via "-". Example (FILE1, seperator, FILE2):
+
+pinnedfiles = ;FILE1;-;FILE2
 
 #V1.2.2
 * fixed a pinningfile-issue which may prevent pinnedfiles to be saved to config-file
