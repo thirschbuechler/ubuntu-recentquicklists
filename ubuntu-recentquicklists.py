@@ -555,7 +555,12 @@ def update(a=None):
 		for j in range(len(customappconfigs[i].pinnedfiles)):
 			tmp = customappconfigs[i].pinnedfiles[j]
 			head, tail = os.path.split(tmp)
-			if not showfullpath:
+			if tmp.startswith("-"):#is a pinnedfiles-seperator
+							separator = Dbusmenu.Menuitem.new ();
+							separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+							separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+							qlList[i].child_append (separator)
+			elif not showfullpath:
 				createItem(tail, head+"/"+tail,i)#name, fullpath
 			else:
 				createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
