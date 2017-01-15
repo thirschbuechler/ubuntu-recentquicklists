@@ -30,10 +30,10 @@ def mainconfigread():#https://docs.python.org/3/library/configparser.html
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 	missingentries = False
-	
+
 	g_sections = ["maxage", "onlycritical", "verboselogging", "startupsplash", "shortnagging", "showfullpath", "maxentriesperlist", "resolvesymlinks"]
 	g_defaults = ["7",		"True",			"False", 			"True",			"False",		"False",		"10"			,	"False"]
-	
+
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
 	config.read(cfile)
@@ -43,14 +43,14 @@ def mainconfigread():#https://docs.python.org/3/library/configparser.html
 		config.add_section("General")
 		missingentries=True
 
-		
-	for i in range(len(g_sections)):		
+
+	for i in range(len(g_sections)):
 		if not config.has_option("General",g_sections[i]):
 			config.set("General",g_sections[i],g_defaults[i])
 			missingentries=True
 
 
-	
+
 	#create missing entries with default values, if there are any
 	if missingentries:
 		with open(cfile, 'w') as configfile:
@@ -65,13 +65,13 @@ def mainconfigread():#https://docs.python.org/3/library/configparser.html
 	showfullpath=config.getboolean("General","showfullpath")
 	maxentriesperlist=config.getint("General","maxentriesperlist")
 	resolvesymlinks=config.getboolean("General","resolvesymlinks")
-	
+
 #</mainconfigread>
 
 
 class app_config_entry:
 	'config entry for each launcher'
-    
+
 	def __init__(self):#http://www.tutorialspoint.com/python/python_classes_objects.htm
 		self.pinnedfiles = []#http://stackoverflow.com/questions/1680528/how-do-i-avoid-having-python-class-data-shared-among-instances
 		self.maxentriesperlist = -1
@@ -89,18 +89,18 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 	missingentries = False
-	
+
 	a_sections = []
 	customappconfigs = []
 	tmp = []
-	
+
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
 	config.read(cfile)
 
-	
-	#create sections for each launcher	
-	for i in range(len(appfiles)):		
+
+	#create sections for each launcher
+	for i in range(len(appfiles)):
 		customappconfigs.append(app_config_entry());
 		if not config.has_section(appfiles[i]):
 			config.add_section(appfiles[i])#add the section (but don't add the option if it's missing)
@@ -112,21 +112,21 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 				tmp = []#is a list because semiarraytolist only handles lists
 				tmp.append(config.get(appfiles[i],"pinnedfiles",raw=True))
 				#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
-				customappconfigs[i].pinnedfiles=(semiarraytolist(tmp)[0])			
-				
+				customappconfigs[i].pinnedfiles=(semiarraytolist(tmp)[0])
+
 		for j in range(len(customappconfigs[i].pinnedfiles)):
 			customappconfigs[i].pinnedfiles[j]=os.path.expanduser(customappconfigs[i].pinnedfiles[j])#turn tildes ('~') into absolute paths
 		#</forloop j>
 
-		if (customappconfigs[i].maxentriesperlist==-1):#if there was no setting 
+		if (customappconfigs[i].maxentriesperlist==-1):#if there was no setting
 			customappconfigs[i].maxentriesperlist=maxentriesperlist #get the general setting
-			
-	#</forloop i>
-	
-	
-		
 
-	
+	#</forloop i>
+
+
+
+
+
 	#create missing entries with default values, if there are any
 	if missingentries:
 		with open(cfile, 'w') as configfile:
@@ -141,7 +141,7 @@ def excluded(launcher_x):#https://docs.python.org/3/library/configparser.html
 	config.optionxform = lambda opt: opt#reason:
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 	val = False
-	
+
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
 	config.read(cfile)
@@ -149,7 +149,7 @@ def excluded(launcher_x):#https://docs.python.org/3/library/configparser.html
 	if (config.has_section(launcher_x) and config.has_option(launcher_x,"maxentriesperlist")):
 		if (config.getint(launcher_x,"maxentriesperlist")==0):
 			val = True
-			
+
 	return val
 
 #</excluded>
@@ -165,12 +165,12 @@ def savepinnedfiles():
 	#https://github.com/earwig/git-repo-updater/commit/51cac2456201a981577fc2cf345a1cf8c11b8b2f
 
 	tmp = ""
-	
+
 	#open the config file
 	cfile=Path+'/'+"urq.conf"
 	config.read(cfile)
 
-	
+
 	for i in range(len(appfiles)):
 		tmp = ""#for each launcher, collect all the pinned files:
 		for file in customappconfigs[i].pinnedfiles:
@@ -181,13 +181,13 @@ def savepinnedfiles():
 			config.set(appfiles[i],"pinnedfiles",tmp)
 			tmp = ""
 			logger.info("saved pinnedfiles of launcher "+appfiles[i])
-			
+
 		else:#0 pinnedfiles
 			if (config.has_section(appfiles[i]) and config.has_option(appfiles[i],"pinnedfiles")):
 				config.remove_option(appfiles[i],"pinnedfiles")
 				logger.info("removed all pinnedfiles from launcher "+appfiles[i])
-			
-	
+
+
 	cfile=Path+'/'+"urq.conf"
 	with open(cfile, 'w') as configfile:#save the configfile
 		config.write(configfile)
@@ -203,7 +203,7 @@ def criticalx(title,msg=""):#displays bubble and loggs as well
 	notify.Notification.new("<b>"+title+"</b>", msg, None).show()
 
 #</criticalx>
-	
+
 
 def debugwait():
 	input("Press Enter to continue...")
@@ -227,13 +227,13 @@ def isEven(number):
 #</isEven>
 
 
-#turns a list of strings of semicolon-seperated elements into a list of all elements 
+#turns a list of strings of semicolon-seperated elements into a list of all elements
 #only takes a list and turns it into another list! (can't take a string)
 def semiarraytolist(semi):
 	list=[]
 	for i in range(len(semi)):
 		list.append(semi[i].split(";"))
-		
+
 	return list
 
 #</semiarraytolist>
@@ -254,9 +254,9 @@ def get_apps():
 	appexecslist = []#how the icon opens stuff
 	mimetypes = []#which types of stuff an app thinks it can open
 	seperatorsneeded = []
-	
+
 	curr_launcher = current_launcher()
-	for i in range(len(curr_launcher)):		
+	for i in range(len(curr_launcher)):
 		if "application://" in curr_launcher[i]:
 			#only get apps (there are other items, such as a removable drives, as well)
 			#http://askubuntu.com/questions/157281/how-do-i-add-an-icon-to-the-unity-dock-not-drag-and-drop/157288#157288
@@ -264,14 +264,14 @@ def get_apps():
 			#make kde4 apps work as well, yay!! :
 			#change their prefix to a folder, as in /usr/share/applications they have their own folder
 			curr_launcher[i]=curr_launcher[i].replace("kde4-","kde4/")
-			
-			
+
+
 			config = configparser.SafeConfigParser()
 			#folders where the launcher's desktop-files sit
 			config.read("/usr/share/applications/"+curr_launcher[i])
 			##this ("~/.local/share/applications/"+curr_launcher[i])) should be the user-editable folder for the unity dash,
 			##but it always crashes the configload, for every file, so  don't load from there (formatting error?)
-						
+
 			if not excluded(curr_launcher[i]):
 				if config.has_option("Desktop Entry","MimeType"):
 					if config.has_option("Desktop Entry","Exec"):
@@ -296,7 +296,7 @@ def get_apps():
 					logger.warning("have a look at the github-wiki:compatibility-manual_adding")
 			else:
 				logger.warning(curr_launcher[i]+" has been excluded via maxentriesperlist=0")
-				
+
 	return launchers,mimetypes,appexecslist
 
 #</get_apps>
@@ -308,30 +308,30 @@ def get_conv_apps():
 	mimetypes = []
 	launcherList = []
 	appexecs = []
-	
-	
+
+
 	appfiles,mimetypes,appexecs=get_apps()
-	
+
 	mimetypes=semiarraytolist(mimetypes)
-	
-	
+
+
 	for i in range(len(appfiles)):
 		launcherList.append(Unity.LauncherEntry.get_for_desktop_id(appfiles[i]))
-	
-	
+
+
 	for i in range(len(appexecs)):#these replace actions also throw away any possible other arguments,
 		appexecs[i]=appexecs[i].replace("%F","%U")#such as the okular "-caption %c" parameter, which isn't used here
 		appexecs[i]=appexecs[i].replace("%f","%U")
 		appexecs[i]=appexecs[i].replace("%u","%U")
 		head, sep, tail = appexecs[i].partition('%U')
 		appexecs[i]=head
-		
-		
+
+
 	if not launcherList:
 		criticalx("Launcher list empty!")
 	elif not mimetypes:#if there are launchers but no mimetype-list
 		criticalx("Mimetype list empty!")
-		
+
 	#values are global so don't need to be returned
 
 #</get_conv_apps>
@@ -351,12 +351,12 @@ def contains(list, item):
 def sort(list):
 	lst = list[0]
 	geordList = []
-	
+
 	ageMax = 0
 	for l in list:
 		if l.get_modified() >= ageMax:
 			ageMax = l.get_modified()
-	
+
 	age = ageMax
 	for i in range(len(list)):
 		for l in list:
@@ -366,7 +366,7 @@ def sort(list):
 					lst = l
 		geordList.append(lst)
 		ageMax = 0
-		
+
 	return geordList
 
 #</sort>
@@ -375,22 +375,34 @@ def sort(list):
 #this function gets called if something in a quicklist is clicked
 def check_item_activated(menuitem, a, location):
 #(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global manager, appexecs, qlList, logger, pinningmode, customappconfigs
+	global manager, appexecs, qlList, logger, pinningmode, removalmode, customappconfigs
 	pos = 0
 	# menuitem is a Dbusmenu.Menuitem object, it's the entry of the recent file
 	for i in range(len(qlList)):
 		if (menuitem.get_parent() == qlList[i]):#get its parent, aka the launcher under which it's seated
 			pos=i
 			break#exit for loop when element found
-			
-	
-	if location.startswith("pinningswitch"):#if the switch between pinningmode and normal (recent-files)mode is pressed
-		pinningmode = not pinningmode#turn it on/off
-		update()#make the list, but with checkboxes and don't launch anything
+
+	if location.startswith("pinningswitch"):#ipinningswitch pressed
+		if pinningmode:
+			pinningmode=False
+		else:
+			pinningmode=True
+			removalmode=False
+
+		update()#display list with checkboxes, don't launch anything
 		savepinnedfiles()#also, save the pinned files to the config file
-				
+	elif location.startswith("removalswitch"):#removalswitch pressed
+		if removalmode:
+			removalmode=False
+		else:
+			removalmode=True
+			pinningmode=False
+
+		update()#make the list, but with checkboxes and don't launch anything
+
 	elif (pinningmode):#deal with the checkboxes -- this may break unity if acted on non-checkbox-entries, that's why it's an elif
-		
+
 		if menuitem.property_get_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE) == Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED:
 			#previously active means remove now
 			customappconfigs[i].pinnedfiles.remove(location)
@@ -400,9 +412,31 @@ def check_item_activated(menuitem, a, location):
 			customappconfigs[i].pinnedfiles.append(location)
 			menuitem.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
 			update()#to show changes
-			
+
+	elif (removalmode):
+		URI=""
+		raw_list = manager.get_items()
+		for item in raw_list:
+		  if (item.get_uri_display()==location):
+			  URI=item.get_uri()
+
+
+		if not (URI==""):
+			if Gtk.RecentManager.remove_item(manager,URI):
+				update()#to show changes
+				logger.info("item "+location+" removed from recent-manager")
+				if os.path.exists(location):
+					criticalx("can't remove file","file "+location+" can't be removed from GTK Recentmanager (status:file-exists)")
+				else:
+					criticalx("can't remove file","file "+location+" can't be removed from GTK Recentmanager (status:file-non-existent)")
+			#</if Gtk.Recentmanager>
+		else:
+			criticalx("can't remove file","file "+location+" can't be removed from GTK Recentmanager (status:no-URI-found)")
+
+
+
 	else:#not pinningswitch: normal recent-files operation, which means call the thing the user has clicked on
-			
+
 		if os.path.exists(location):#if there is a file to be opened, open it
 			logger.info("exec "+appexecs[pos]+ "\""+ location+"\"")
 			process = subprocess.Popen(appexecs[pos]+ "\""+ location+"\"",shell=True)#look up which program to use for this "location" (=path+filename)
@@ -423,29 +457,25 @@ def check_item_activated(menuitem, a, location):
 			update()
 		#</else: gone>
 	#</location.startswith pinningswitch>
-	
+
 #</check_item_activated>
 
 
 #create quicklist entry as dbus menu item (not attached to Unity at this point)
 def createItem(name, location, qlnummer):
-	global qlList, appexecs, logger, pinningmode
-	
+	global qlList, appexecs, logger, pinningmode, removalmode
+
 	item = Dbusmenu.Menuitem.new()
 	name=name.replace("_","__")#escape the underscore with a second one, a single one would make an underline
 	#this only creates an item with a name, the exec association happens in check_item_activated
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-	
+
 	if (pinningmode):
 			item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)#set checkbox properties if in pinning mode
-			if location.startswith("pinningswitch"):
-				if pinningmode:
-					item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#then it gets a checkmark
-				##else:
-				##	item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
-				##moved down
-				
+			if location.startswith("pinningswitch"):#switch gets added checked
+				item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#then it gets a checkmark
+
 			else:#if its a recentfiles-entry
 				item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
 				for j in range(len(customappconfigs[qlnummer].pinnedfiles)):
@@ -453,10 +483,20 @@ def createItem(name, location, qlnummer):
 						item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#then it gets a checkmark
 					#else:
 						#item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
-	elif location.startswith("pinningswitch"):
+	elif location.startswith("pinningswitch"):#switch gets added unchecked
 		item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
 	#<if pinningmode>
-		
+
+
+	if (removalmode):
+			item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)#set checkbox properties if in pinning mode
+			if location.startswith("removalswitch"):#switch gets added checked
+				item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#then it gets a checkmark
+
+	elif location.startswith("removalswitch"):#switch gets added unchecked
+		item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
+	#<if removalmode>
+
 	#attach event handler "check_item_activated"
 	item.connect("item-activated", check_item_activated,location)
 	if not qlList[qlnummer].child_append(item)	:
@@ -473,23 +513,23 @@ def update(a=None):
 	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks
 	tmp = ""
 	pinned=False
-		
+
 	#old quicklists have to be deleted before updating, otherwise new items would be appended
 	for i in range(len(qlList)):
 		for c in qlList[i].get_children():
 			qlList[i].child_delete(c)
-	
+
 	#add entries if there are too little
 	while (len(qlList)<len(launcherList)):
 		qlList.append(Dbusmenu.Menuitem.new())
-	
-	
-			
+
+
+
 	raw_list = manager.get_items()
 	logger.warning("updating, got "+str(len(raw_list))+"unfiltered items")
 	RecentFiles = []
 	entriesperList = [] #counter per launcher-slot (to make maxentriesperlist happen)
-	
+
 	for i in range(len(mimetypes)):
 		RecentFiles.append([])#initialize emtpy RecentFiles
 		entriesperList.append(0)#and entriesperList
@@ -504,13 +544,13 @@ def update(a=None):
 					if ((item.get_mime_type()==mimetypes[e][g]) and (item.get_age()<(maxage+1))):
 						x=x+1
 						RecentFiles[e].append(item)
-	#</ item in raw_list>	
+	#</ item in raw_list>
 
-	
-	logger.warning("now, "+str(x)+" items are good to go ")			
+
+	logger.warning("now, "+str(x)+" items are good to go ")
 
 	#------------#   add recent files   #------------#
-	
+
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0 :#if there are items to be added
 			for rf in sort(RecentFiles[i]):
@@ -524,9 +564,9 @@ def update(a=None):
 					for j in range(len(customappconfigs[i].pinnedfiles)):#see pinned==False
 						if customappconfigs[i].pinnedfiles[j]==tmp:
 							pinned=True
-							
+
 					if (pinned==False):#if this file isn't queued to be pinned later
-						
+
 						if not showfullpath:
 							createItem(tail, tmp,i)#name, fullpath
 						else:
@@ -534,9 +574,9 @@ def update(a=None):
 						entriesperList[i]=entriesperList[i]+1
 				#</if  maxentriesperlist>
 			#</rf in RecentFiles>
-	#</ i in RecentFiles>	
-	
-	
+	#</ i in RecentFiles>
+
+
 	#add pinning seperator
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0:
@@ -546,11 +586,11 @@ def update(a=None):
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 				qlList[i].child_append (separator)
-	#</ i in RecentFiles>	
-		
-		
+	#</ i in RecentFiles>
+
+
 	#------------#   add pinned files	  #------------#
-	
+
 	for i in range(len(customappconfigs)):
 		for j in range(len(customappconfigs[i].pinnedfiles)):
 			tmp = customappconfigs[i].pinnedfiles[j]
@@ -565,15 +605,16 @@ def update(a=None):
 			else:
 				createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
 			entriesperList[i]=entriesperList[i]+1
-				
+
 			#</ j in customappconfigs>
-	#</ i in customappconfigs>	
-	
+	#</ i in customappconfigs>
+
 	#------------#   add pinning switch	  #------------#
 	for i in range(len(RecentFiles)):#pinningmode switch
 		createItem("[file pinning]", "pinningswitch",i)
-	
-	
+		createItem("[remove recent-entries]", "removalswitch",i)
+
+
 	#add seperators, if the launcher has actions below the files
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0:
@@ -582,8 +623,8 @@ def update(a=None):
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 				qlList[i].child_append (separator)
-	#</ i in RecentFiles>	
-		
+	#</ i in RecentFiles>
+
 #</update>
 
 
@@ -592,7 +633,7 @@ def reg_ql():#register quicklist
 	for i in range(len(launcherList)):
 		if (customappconfigs[i].maxentriesperlist!=0):
 			launcherList[i].set_property("quicklist", qlList[i]) #launcherList entries are Unity.LauncherEntry objects
-			
+
 	#connect function "update" as a handler to the signal "changed" (called when gtk's recent files list changes)
 	#(lookup "pygtk gobject.GObject.connect")
 	manager.connect("changed",update)
@@ -602,12 +643,13 @@ def reg_ql():#register quicklist
 #---------------------------------  main  --------------------------------
 def main():
 	global manager, onlycritical, verboselogging, Path, logger
-	global qlList, pinningmode
+	global qlList, pinningmode, removalmode
 	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
 
-	Version = "V1.2.2"
+	Version = "V1.2.2.x"
 	pinningmode=False
-	
+	removalmode=False
+
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
 	mainconfigread()
@@ -625,7 +667,7 @@ def main():
 	if startupsplash:
 		notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists "+Version+" startup</b>", None).show()
 
-		
+
 	#terminal info messages
 	print("")
 	print("Ubuntu-recentquicklists "+Version+" startup")
@@ -641,16 +683,16 @@ def main():
 	manager = Gtk.RecentManager.get_default()
 	if manager:
 		logger.info("Gtk Recentmanager loaded")
-	else:	
+	else:
 		criticalx("Gtk Recentmanager FAILED to load!!","Abandon Ship!")
 
-		
+
 	get_conv_apps()
-	
+
 	appconfigread()
-	
+
 	qlList = []
-	
+
 	update()
 
 	reg_ql()#append the dbus objects to the unity launcher entries
@@ -660,7 +702,7 @@ def main():
 	loop = GObject.MainLoop()
 
 	loop.run()
-	
+
 #</main>
 
 

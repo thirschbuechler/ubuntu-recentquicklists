@@ -1,5 +1,6 @@
 ##currently new master-branch features:
-* added filepinning-seperator option: In urq.conf, a seperator can be added via "-". Example (FILE1, seperator, FILE2):
+* recent-files removal switch (won't remove pinned files, use the pinningswitch for that)
+* filepinning-seperator option: In urq.conf, a seperator can be added via "-". Example (FILE1, seperator, FILE2):
 
 pinnedfiles = ;FILE1;-;FILE2
 
