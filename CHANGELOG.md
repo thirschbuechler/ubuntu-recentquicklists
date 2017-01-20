@@ -1,4 +1,5 @@
-##currently new master-branch features:
+##currently new dev-branch features:
+* added gi-require-statements to reduce terminal-output garbage
 * recent-files removal switch (won't remove pinned files, use the pinningswitch for that)
 * filepinning-seperator option: In urq.conf, a seperator can be added via "-". Example (FILE1, seperator, FILE2):
 

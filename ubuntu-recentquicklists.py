@@ -1,8 +1,30 @@
 #!/usr/bin/env python3
 ##import time
 ##time.sleep(20) # delay for x seconds
-from gi.repository import Unity, Gio, GObject, Dbusmenu, Gtk
+#import apt
+#cache = apt.Cache()
+#if cache['package-name'].is_installed:
+    #print "YES it's installed"
+#else:
+    #print "NO it's NOT installed"
 import os, subprocess, sys
+#get rid of terminal-startup-garble:
+ # GI_TYPELIB_PATH
+print("try installing gir1.2-rsvg-2.0 if the script craps out RIGHT HERE")
+print("(ends unexpectedly)")
+if not 'GI_TYPELIB_PATH' in os.environ:
+	full_name = '/usr/lib/girepository-1.0'
+	if os.path.exists(full_name):
+		print("setting GI_TYPELIB_PATH env var")
+		os.environ['GI_TYPELIB_PATH'] = full_name
+
+import gi
+gi.require_version('Unity', '7.0')
+gi.require_version('Gtk', '3.0')
+gi.require_version('Notify', '0.7')
+
+#</get rid of garble>
+from gi.repository import Unity, Gio, GObject, Dbusmenu, Gtk
 import configparser
 import atexit
 from gi.repository import Notify as notify#notification bubble
@@ -12,6 +34,7 @@ from gi.repository import Notify as notify#notification bubble
 #custom logging
 import log3
 import logging.handlers #logging.WARNING and so on
+
 
 
 # --> comment
@@ -264,39 +287,45 @@ def get_apps():
 			#make kde4 apps work as well, yay!! :
 			#change their prefix to a folder, as in /usr/share/applications they have their own folder
 			curr_launcher[i]=curr_launcher[i].replace("kde4-","kde4/")
+			conffile="/usr/share/applications/"+curr_launcher[i]
 
+			if os.path.exists(conffile):
 
-			config = configparser.SafeConfigParser()
-			#folders where the launcher's desktop-files sit
-			config.read("/usr/share/applications/"+curr_launcher[i])
-			##this ("~/.local/share/applications/"+curr_launcher[i])) should be the user-editable folder for the unity dash,
-			##but it always crashes the configload, for every file, so  don't load from there (formatting error?)
+				config = configparser.SafeConfigParser()
+				#folders where the launcher's desktop-files sit
+				config.read(conffile)
+				##this ("~/.local/share/applications/"+curr_launcher[i])) should be the user-editable folder for the unity dash,
+				##but it always crashes the configload, for every file, so  don't load from there (formatting error?)
 
-			if not excluded(curr_launcher[i]):
-				if config.has_option("Desktop Entry","MimeType"):
-					if config.has_option("Desktop Entry","Exec"):
-							logger.warning(curr_launcher[i]+" is a quicklist candidate")
-							mimetypes.append(config.get("Desktop Entry","MimeType"))
-							#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
-							appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
-							#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
-							curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
-							launchers.append(curr_launcher[i])
-							if ( config.has_option("Desktop Entry","Actions") or config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts") ):
-								seperatorsneeded.append(1)
-							else:
-								seperatorsneeded.append(0)
+				if not excluded(curr_launcher[i]):
+					if config.has_option("Desktop Entry","MimeType"):
+						if config.has_option("Desktop Entry","Exec"):
+								logger.warning(curr_launcher[i]+" is a quicklist candidate")
+								mimetypes.append(config.get("Desktop Entry","MimeType"))
+								#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
+								appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
+								#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
+								curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
+								launchers.append(curr_launcher[i])
+								if ( config.has_option("Desktop Entry","Actions") or config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts") ):
+									seperatorsneeded.append(1)
+								else:
+									seperatorsneeded.append(0)
+						#</if: has option desktop-entry exec>
+						else:
+								logger.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
+								logger.warning("have a look at the github-wiki:compatibility-manual_adding")
+
+					#</if: has option desktop-entry mimetype>
 					else:
-							logger.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
-							logger.warning("have a look at the github-wiki:compatibility-manual_adding")
-
-
+						logger.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
+						logger.warning("have a look at the github-wiki:compatibility-manual_adding")
+				#</if: not excluded>
 				else:
-					logger.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
-					logger.warning("have a look at the github-wiki:compatibility-manual_adding")
-			else:
-				logger.warning(curr_launcher[i]+" has been excluded via maxentriesperlist=0")
-
+					logger.warning(curr_launcher[i]+" has been excluded via maxentriesperlist=0")
+			#</if conffile exists>
+		#</if "application://" in current_launcher[i]>
+	#</for range in current_launcher>
 	return launchers,mimetypes,appexecslist
 
 #</get_apps>
@@ -417,8 +446,8 @@ def check_item_activated(menuitem, a, location):
 		URI=""
 		raw_list = manager.get_items()
 		for item in raw_list:
-		  if (item.get_uri_display()==location):
-			  URI=item.get_uri()
+			if (item.get_uri_display()==location):
+				URI=item.get_uri()
 
 
 		if not (URI==""):
@@ -510,7 +539,7 @@ def createItem(name, location, qlnummer):
 def update(a=None):
 	#called on gtk_recent_manager "changed"-event
 	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks
+	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks, verboselogging
 	tmp = ""
 	pinned=False
 
@@ -538,6 +567,8 @@ def update(a=None):
 	x=0
 	#only use files with a supported mimetype, populate RecentFiles accordingly
 	for item in raw_list:
+		if verboselogging:
+			logger.info("item "+item.get_uri_display()+" is in raw_recentmanager")
 		if item.exists():#prevent deleted/moved/renamed "ghosts" of files showing up
 			for e in range(len(mimetypes)):
 				for g in range(len(mimetypes[e])):
@@ -672,9 +703,9 @@ def main():
 	print("")
 	print("Ubuntu-recentquicklists "+Version+" startup")
 	print("")
-	print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
-	print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
-	print(" ")
+	#print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
+	#print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
+	#print(" ")
 	print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-file")
 	print("(.. for the current release. Master branch features may only be documented in CHANGELOG.md, however)")
 
