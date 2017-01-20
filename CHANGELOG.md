@@ -1,4 +1,5 @@
 ##currently new dev-branch features:
+* now using ~./local dir for .desktop files primarily instead of the /usr one
 * added gi-require-statements to reduce terminal-output garbage
 * recent-files removal switch (won't remove pinned files, use the pinningswitch for that)
 * filepinning-seperator option: In urq.conf, a seperator can be added via "-". Example (FILE1, seperator, FILE2):
@@ -11,7 +12,7 @@ pinnedfiles = ;FILE1;-;FILE2
 * fixed a bad comment which prevented new configfile-sections from being created
 
 #V1.2.1
- 
+
 ##added:
 - filepinning via menu
 - installation and update scripts
@@ -41,4 +42,3 @@ pinnedfiles = ;FILE1;-;FILE2
 
 #V1.0
 first release
-

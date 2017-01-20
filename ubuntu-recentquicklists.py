@@ -287,16 +287,25 @@ def get_apps():
 			#make kde4 apps work as well, yay!! :
 			#change their prefix to a folder, as in /usr/share/applications they have their own folder
 			curr_launcher[i]=curr_launcher[i].replace("kde4-","kde4/")
-			conffile="/usr/share/applications/"+curr_launcher[i]
 
-			if os.path.exists(conffile):
+
+			conffile1="/usr/share/applications/"+curr_launcher[i]
+			conffile2="~/.local/share/applications/"+curr_launcher[i]
+			conffile2=os.path.expanduser(conffile2)#turn tildes ('~') into absolute paths
+			A=os.path.exists(conffile1)
+			B=os.path.exists(conffile2)
+
+			if A or B:#one has to exist, decide which one to use
+				if A and B:
+					logger.warning("two .desktop-files found, using "+conffile2)
+					conffile=conffile2
+				else:
+					conffile=conffile1
 
 				config = configparser.SafeConfigParser()
 				#folders where the launcher's desktop-files sit
 				config.read(conffile)
-				##this ("~/.local/share/applications/"+curr_launcher[i])) should be the user-editable folder for the unity dash,
-				##but it always crashes the configload, for every file, so  don't load from there (formatting error?)
-
+				
 				if not excluded(curr_launcher[i]):
 					if config.has_option("Desktop Entry","MimeType"):
 						if config.has_option("Desktop Entry","Exec"):
@@ -706,8 +715,10 @@ def main():
 	#print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
 	#print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
 	#print(" ")
-	print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-file")
+	print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-&-Logging")
 	print("(.. for the current release. Master branch features may only be documented in CHANGELOG.md, however)")
+	print("")
+	print("No further terminal output expected on normal operation.. go away ;)")
 
 
 	#https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
