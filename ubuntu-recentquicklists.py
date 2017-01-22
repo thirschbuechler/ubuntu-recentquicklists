@@ -305,7 +305,7 @@ def get_apps():
 				config = configparser.SafeConfigParser()
 				#folders where the launcher's desktop-files sit
 				config.read(conffile)
-				
+
 				if not excluded(curr_launcher[i]):
 					if config.has_option("Desktop Entry","MimeType"):
 						if config.has_option("Desktop Entry","Exec"):
@@ -463,6 +463,7 @@ def check_item_activated(menuitem, a, location):
 			if Gtk.RecentManager.remove_item(manager,URI):
 				update()#to show changes
 				logger.info("item "+location+" removed from recent-manager")
+			else:#if recent-manager.remove reported "False":
 				if os.path.exists(location):
 					criticalx("can't remove file","file "+location+" can't be removed from GTK Recentmanager (status:file-exists)")
 				else:
@@ -548,7 +549,7 @@ def createItem(name, location, qlnummer):
 def update(a=None):
 	#called on gtk_recent_manager "changed"-event
 	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks, verboselogging
+	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks, verboselogging, removalmode
 	tmp = ""
 	pinned=False
 
@@ -617,7 +618,7 @@ def update(a=None):
 	#</ i in RecentFiles>
 
 
-	#add pinning seperator
+	#add seperator to pinned files
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0:
 			if (entriesperList[i] != 0):#only add seperator if there are "normal" non-pinned recentfiles above
@@ -630,35 +631,44 @@ def update(a=None):
 
 
 	#------------#   add pinned files	  #------------#
+	if not removalmode:
+		for i in range(len(customappconfigs)):
+			count=len(customappconfigs[i].pinnedfiles)
+			for j in range(count):
+				tmp = customappconfigs[i].pinnedfiles[j]
+				head, tail = os.path.split(tmp)
+				if tmp.startswith("-"):#is a pinnedfiles-seperator
+								separator = Dbusmenu.Menuitem.new ();
+								separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+								separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+								qlList[i].child_append (separator)
+				elif not showfullpath:
+					createItem(tail, head+"/"+tail,i)#name, fullpath
+				else:
+					createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
+				entriesperList[i]=entriesperList[i]+1
+				#add seperator between pinned files and switches (after last element)
+				if (j==count-1):
+					separator = Dbusmenu.Menuitem.new ();
+					separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+					separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+					qlList[i].child_append (separator)
+				#</ j in customappconfigs>
+		#</ i in customappconfigs>
 
-	for i in range(len(customappconfigs)):
-		for j in range(len(customappconfigs[i].pinnedfiles)):
-			tmp = customappconfigs[i].pinnedfiles[j]
-			head, tail = os.path.split(tmp)
-			if tmp.startswith("-"):#is a pinnedfiles-seperator
-							separator = Dbusmenu.Menuitem.new ();
-							separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-							separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-							qlList[i].child_append (separator)
-			elif not showfullpath:
-				createItem(tail, head+"/"+tail,i)#name, fullpath
-			else:
-				createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
-			entriesperList[i]=entriesperList[i]+1
 
-			#</ j in customappconfigs>
-	#</ i in customappconfigs>
 
-	#------------#   add pinning switch	  #------------#
+	#------------#   add switches	  #------------#
+
 	for i in range(len(RecentFiles)):#pinningmode switch
 		createItem("[file pinning]", "pinningswitch",i)
 		createItem("[remove recent-entries]", "removalswitch",i)
 
 
-	#add seperators, if the launcher has actions below the files
+	#add seperator between switches launcheractions
 	for i in range(len(RecentFiles)):
-		if len(RecentFiles[i]) != 0:
-			if (seperatorsneeded[i]==1 and customappconfigs[i].maxentriesperlist!=0):
+		#if len(RecentFiles[i]) != 0:
+			if (seperatorsneeded[i]==1):## and customappconfigs[i].maxentriesperlist!=0):
 				separator = Dbusmenu.Menuitem.new ();
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
@@ -684,7 +694,7 @@ def reg_ql():#register quicklist
 def main():
 	global manager, onlycritical, verboselogging, Path, logger
 	global qlList, pinningmode, removalmode
-	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
+	#global variables: not the best, but I don't like to write/have a 1000 params in each fct call either..
 
 	Version = "V1.2.2.x"
 	pinningmode=False
