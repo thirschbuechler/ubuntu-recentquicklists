@@ -1,8 +1,37 @@
 #!/usr/bin/env python3
 ##import time
 ##time.sleep(20) # delay for x seconds
-from gi.repository import Unity, Gio, GObject, Dbusmenu, Gtk
+import apt
+
+Version = "V1.2.2.x"
+print("")
+print("Ubuntu-recentquicklists "+Version+" startup")
+print("")
+print("loading apt-cache for package-detection..")
+cache = apt.Cache()
+prerequisites=['python3','gir1.2-rsvg-2.0', 'python3-gi']#gir1.2-rsvg-2.0 makes gi.require_version work
+for pkg in prerequisites:
+	if not cache[pkg].is_installed:
+	    print("try installing %s if the script craps out" %pkg)
+	else:
+		print("package %s detected" %pkg)
 import os, subprocess, sys
+#get rid of terminal-startup-garble:
+ # GI_TYPELIB_PATH
+
+if not 'GI_TYPELIB_PATH' in os.environ:
+	full_name = '/usr/lib/girepository-1.0'
+	if os.path.exists(full_name):
+		print("setting GI_TYPELIB_PATH env var")
+		os.environ['GI_TYPELIB_PATH'] = full_name
+
+import gi
+gi.require_version('Unity', '7.0')
+gi.require_version('Gtk', '3.0')
+gi.require_version('Notify', '0.7')
+
+#</get rid of garble>
+from gi.repository import Unity, Gio, GObject, Dbusmenu, Gtk
 import configparser
 import atexit
 from gi.repository import Notify as notify#notification bubble
@@ -12,6 +41,7 @@ from gi.repository import Notify as notify#notification bubble
 #custom logging
 import log3
 import logging.handlers #logging.WARNING and so on
+
 
 
 # --> comment
@@ -266,37 +296,52 @@ def get_apps():
 			curr_launcher[i]=curr_launcher[i].replace("kde4-","kde4/")
 
 
-			config = configparser.SafeConfigParser()
-			#folders where the launcher's desktop-files sit
-			config.read("/usr/share/applications/"+curr_launcher[i])
-			##this ("~/.local/share/applications/"+curr_launcher[i])) should be the user-editable folder for the unity dash,
-			##but it always crashes the configload, for every file, so  don't load from there (formatting error?)
+			conffile1="/usr/share/applications/"+curr_launcher[i]
+			conffile2="~/.local/share/applications/"+curr_launcher[i]
+			conffile2=os.path.expanduser(conffile2)#turn tildes ('~') into absolute paths
+			A=os.path.exists(conffile1)
+			B=os.path.exists(conffile2)
 
-			if not excluded(curr_launcher[i]):
-				if config.has_option("Desktop Entry","MimeType"):
-					if config.has_option("Desktop Entry","Exec"):
-							logger.warning(curr_launcher[i]+" is a quicklist candidate")
-							mimetypes.append(config.get("Desktop Entry","MimeType"))
-							#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
-							appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
-							#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
-							curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
-							launchers.append(curr_launcher[i])
-							if ( config.has_option("Desktop Entry","Actions") or config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts") ):
-								seperatorsneeded.append(1)
-							else:
-								seperatorsneeded.append(0)
-					else:
-							logger.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
-							logger.warning("have a look at the github-wiki:compatibility-manual_adding")
-
-
+			if A or B:#one has to exist, decide which one to use
+				if A and B:
+					logger.warning("two .desktop-files found, using "+conffile2)
+					conffile=conffile2
 				else:
-					logger.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
-					logger.warning("have a look at the github-wiki:compatibility-manual_adding")
-			else:
-				logger.warning(curr_launcher[i]+" has been excluded via maxentriesperlist=0")
+					conffile=conffile1
 
+				config = configparser.SafeConfigParser()
+				#folders where the launcher's desktop-files sit
+				config.read(conffile)
+
+				if not excluded(curr_launcher[i]):
+					if config.has_option("Desktop Entry","MimeType"):
+						if config.has_option("Desktop Entry","Exec"):
+								logger.warning(curr_launcher[i]+" is a quicklist candidate")
+								mimetypes.append(config.get("Desktop Entry","MimeType"))
+								#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
+								appexecslist.append(config.get("Desktop Entry","Exec",raw=True))
+								#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
+								curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
+								launchers.append(curr_launcher[i])
+								if ( config.has_option("Desktop Entry","Actions") or config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts") ):
+									seperatorsneeded.append(1)
+								else:
+									seperatorsneeded.append(0)
+						#</if: has option desktop-entry exec>
+						else:
+								logger.warning(curr_launcher[i] + " has no Exec-Entry and will be omitted")
+								logger.warning("have a look at the github-wiki:compatibility-manual_adding")
+
+					#</if: has option desktop-entry mimetype>
+					else:
+						logger.warning(curr_launcher[i] + " has no MimeType-Entry and will be omitted")
+						logger.warning("have a look at the github-wiki:compatibility-manual_adding")
+				#</if: not excluded>
+				else:
+					logger.warning(curr_launcher[i]+" has been excluded via maxentriesperlist=0")
+			#</if conffile exists>
+		#</if "application://" in current_launcher[i]>
+	#</for range in current_launcher>
 	return launchers,mimetypes,appexecslist
 
 #</get_apps>
@@ -417,14 +462,15 @@ def check_item_activated(menuitem, a, location):
 		URI=""
 		raw_list = manager.get_items()
 		for item in raw_list:
-		  if (item.get_uri_display()==location):
-			  URI=item.get_uri()
+			if (item.get_uri_display()==location):
+				URI=item.get_uri()
 
 
 		if not (URI==""):
 			if Gtk.RecentManager.remove_item(manager,URI):
 				update()#to show changes
 				logger.info("item "+location+" removed from recent-manager")
+			else:#if recent-manager.remove reported "False":
 				if os.path.exists(location):
 					criticalx("can't remove file","file "+location+" can't be removed from GTK Recentmanager (status:file-exists)")
 				else:
@@ -510,7 +556,7 @@ def createItem(name, location, qlnummer):
 def update(a=None):
 	#called on gtk_recent_manager "changed"-event
 	#(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks
+	global maxage, qlList, mimetypes, maxentriesperlist, seperatorsneeded, logger, customappconfigs, resolvesymlinks, verboselogging, removalmode
 	tmp = ""
 	pinned=False
 
@@ -538,6 +584,8 @@ def update(a=None):
 	x=0
 	#only use files with a supported mimetype, populate RecentFiles accordingly
 	for item in raw_list:
+		if verboselogging:
+			logger.info("item "+item.get_uri_display()+" is in raw_recentmanager")
 		if item.exists():#prevent deleted/moved/renamed "ghosts" of files showing up
 			for e in range(len(mimetypes)):
 				for g in range(len(mimetypes[e])):
@@ -577,7 +625,7 @@ def update(a=None):
 	#</ i in RecentFiles>
 
 
-	#add pinning seperator
+	#add seperator to pinned files
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0:
 			if (entriesperList[i] != 0):#only add seperator if there are "normal" non-pinned recentfiles above
@@ -590,35 +638,44 @@ def update(a=None):
 
 
 	#------------#   add pinned files	  #------------#
+	if not removalmode:
+		for i in range(len(customappconfigs)):
+			count=len(customappconfigs[i].pinnedfiles)
+			for j in range(count):
+				tmp = customappconfigs[i].pinnedfiles[j]
+				head, tail = os.path.split(tmp)
+				if tmp.startswith("-"):#is a pinnedfiles-seperator
+								separator = Dbusmenu.Menuitem.new ();
+								separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+								separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+								qlList[i].child_append (separator)
+				elif not showfullpath:
+					createItem(tail, head+"/"+tail,i)#name, fullpath
+				else:
+					createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
+				entriesperList[i]=entriesperList[i]+1
+				#add seperator between pinned files and switches (after last element)
+				if (j==count-1):
+					separator = Dbusmenu.Menuitem.new ();
+					separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+					separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+					qlList[i].child_append (separator)
+				#</ j in customappconfigs>
+		#</ i in customappconfigs>
 
-	for i in range(len(customappconfigs)):
-		for j in range(len(customappconfigs[i].pinnedfiles)):
-			tmp = customappconfigs[i].pinnedfiles[j]
-			head, tail = os.path.split(tmp)
-			if tmp.startswith("-"):#is a pinnedfiles-seperator
-							separator = Dbusmenu.Menuitem.new ();
-							separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-							separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-							qlList[i].child_append (separator)
-			elif not showfullpath:
-				createItem(tail, head+"/"+tail,i)#name, fullpath
-			else:
-				createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
-			entriesperList[i]=entriesperList[i]+1
 
-			#</ j in customappconfigs>
-	#</ i in customappconfigs>
 
-	#------------#   add pinning switch	  #------------#
+	#------------#   add switches	  #------------#
+
 	for i in range(len(RecentFiles)):#pinningmode switch
 		createItem("[file pinning]", "pinningswitch",i)
 		createItem("[remove recent-entries]", "removalswitch",i)
 
 
-	#add seperators, if the launcher has actions below the files
+	#add seperator between switches launcheractions
 	for i in range(len(RecentFiles)):
-		if len(RecentFiles[i]) != 0:
-			if (seperatorsneeded[i]==1 and customappconfigs[i].maxentriesperlist!=0):
+		#if len(RecentFiles[i]) != 0:
+			if (seperatorsneeded[i]==1):## and customappconfigs[i].maxentriesperlist!=0):
 				separator = Dbusmenu.Menuitem.new ();
 				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
 				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
@@ -644,16 +701,18 @@ def reg_ql():#register quicklist
 def main():
 	global manager, onlycritical, verboselogging, Path, logger
 	global qlList, pinningmode, removalmode
-	#global variables: not the best, but I don't like to write/have a 1000 things in each fct call either..
+	#global variables: not the best, but I don't like to write/have a 1000 params in each fct call either..
 
-	Version = "V1.2.2.x"
+	print("entering main()")
 	pinningmode=False
 	removalmode=False
 
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
+	print("reading config-file..")
 	mainconfigread()
 
+	print("setting-up logfile..")
 	logfile=Path+"/"+"urq.out"
 	#logging switches
 	if (onlycritical):
@@ -668,15 +727,14 @@ def main():
 		notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists "+Version+" startup</b>", None).show()
 
 
-	#terminal info messages
-	print("")
-	print("Ubuntu-recentquicklists "+Version+" startup")
-	print("")
-	print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
-	print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
+	#further terminal info messages
+	#print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
+	#print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
 	print(" ")
-	print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-file")
+	print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-&-Logging")
 	print("(.. for the current release. Master branch features may only be documented in CHANGELOG.md, however)")
+	print("")
+	print("No further terminal output expected on normal operation.. go away ;)")
 
 
 	#https://developer.gnome.org/gtk3/stable/GtkRecentManager.html
