@@ -1,4 +1,5 @@
-##currently new master-branch features:
+##currently new master-branch features
+* now requiring gir1.2-rsvg-2.0 !!!
 * added package-detection at startup
 * now using ~./local dir for .desktop files primarily instead of the /usr one
 * added gi-require-statements to reduce terminal-output garbage
