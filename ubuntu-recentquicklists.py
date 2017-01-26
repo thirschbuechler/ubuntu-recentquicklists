@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
 ##import time
 ##time.sleep(20) # delay for x seconds
-#import apt
-#cache = apt.Cache()
-#if cache['package-name'].is_installed:
-    #print "YES it's installed"
-#else:
-    #print "NO it's NOT installed"
+import apt
+
+Version = "V1.2.2.x"
+print("")
+print("Ubuntu-recentquicklists "+Version+" startup")
+print("")
+print("loading apt-cache for package-detection..")
+cache = apt.Cache()
+prerequisites=['python3','gir1.2-rsvg-2.0', 'python3-gi']#gir1.2-rsvg-2.0 makes gi.require_version work
+for pkg in prerequisites:
+	if not cache[pkg].is_installed:
+	    print("try installing %s if the script craps out" %pkg)
+	else:
+		print("package %s detected" %pkg)
 import os, subprocess, sys
 #get rid of terminal-startup-garble:
  # GI_TYPELIB_PATH
-print("try installing gir1.2-rsvg-2.0 if the script craps out RIGHT HERE")
-print("(ends unexpectedly)")
+
 if not 'GI_TYPELIB_PATH' in os.environ:
 	full_name = '/usr/lib/girepository-1.0'
 	if os.path.exists(full_name):
@@ -696,14 +703,16 @@ def main():
 	global qlList, pinningmode, removalmode
 	#global variables: not the best, but I don't like to write/have a 1000 params in each fct call either..
 
-	Version = "V1.2.2.x"
+	print("entering main()")
 	pinningmode=False
 	removalmode=False
 
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
+	print("reading config-file..")
 	mainconfigread()
 
+	print("setting-up logfile..")
 	logfile=Path+"/"+"urq.out"
 	#logging switches
 	if (onlycritical):
@@ -718,13 +727,10 @@ def main():
 		notify.Notification.new("<b>URQ</b>", "<b>Ubuntu-recentquicklists "+Version+" startup</b>", None).show()
 
 
-	#terminal info messages
-	print("")
-	print("Ubuntu-recentquicklists "+Version+" startup")
-	print("")
+	#further terminal info messages
 	#print("Please ignore possible warnings about requiring certain versions of Unity/Gtk/Notify etc. (which come up when executing the script via terminal), unless the script does nothing.")
 	#print("In that case, you may need to upgrade these modules or Ubuntu itself (before doing so, manually open and close a document to see whether GTK-recentmanager just got emptied unexpectedly)")
-	#print(" ")
+	print(" ")
 	print("Configuration & Debugging info (crtl+click): https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Configuration-&-Logging")
 	print("(.. for the current release. Master branch features may only be documented in CHANGELOG.md, however)")
 	print("")

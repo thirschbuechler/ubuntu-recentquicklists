@@ -1,4 +1,5 @@
-##currently new dev-branch features:
+##currently new master-branch features:
+* added package-detection at startup
 * now using ~./local dir for .desktop files primarily instead of the /usr one
 * added gi-require-statements to reduce terminal-output garbage
 * recent-files removal switch (won't remove pinned files, use the pinningswitch for that)
