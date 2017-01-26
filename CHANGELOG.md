@@ -1,4 +1,6 @@
-##currently new master-branch features:
+##currently new dev-branch features:
+* seperators can be added and removed via UI
+* todo: make "move up/down functional"
 * added package-detection at startup
 * now using ~./local dir for .desktop files primarily instead of the /usr one
 * added gi-require-statements to reduce terminal-output garbage
