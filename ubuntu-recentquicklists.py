@@ -540,44 +540,59 @@ def check_item_activated(menuitem, a, location):
 #</check_item_activated>
 
 
-#create quicklist entry as dbus menu item (not attached to Unity at this point)
+#create quicklist entry as dbus menu item (not yet attached to Unity)
 def createItem(name, location, qlnummer):
 	global qlList, appexecs, logger, pinningmode, removalmode
-	#print(location)
-	item = Dbusmenu.Menuitem.new()
+	checkbox=False
+	checked=False
+
 	name=name.replace("_","__")#escape the underscore with a second one, a single one would make an underline
 	#this only creates an item with a name, the exec association happens in check_item_activated
 
 	if pinningmode and location.startswith("-"):
-		name="---seperator---"#display the seperator as an entry
-		item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
-
-	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
-	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+		name="---seperator---"#display the seperator as an entry, so it can be clicked and moved up/down
+		checked=True
 
 	if (pinningmode):
-			item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)#redefine items to have checkboxes if in pinning mode
+			checkbox=True
 
 			if location.startswith("pinningswitch"):
-				item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#is checked in pinningmode
-				#also, add a unchecked seperator-entry for adding seperatorsneeded
+				#intermission: add these switches
 				createItem("[add seperator]","seperators++",qlnummer)#is inactive, should be added fine when clicked
+
+				#do:   http://stackoverflow.com/questions/3173154/move-an-item-inside-a-list
 				createItem("[move up]","moveup",qlnummer)
 				createItem("[move down]","movedown",qlnummer)
+
+				#continue, add the pinningswitch, with:
+				checked=True
+
 			else: #if its a recentfiles-entry or another switch
 				if not location.startswith("-"):
-					item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)#default to unchecked
+					checked=False
 				for j in range(len(customappconfigs[qlnummer].pinnedfiles)):
 					if customappconfigs[qlnummer].pinnedfiles[j].startswith(location):#if this entry is pinned
-						item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#have a checkmark
+						checked=True
 	#<if pinningmode>
 
 
-	if (removalmode):
+	elif (removalmode):
 		if location.startswith("removalswitch"):#is checked in removalmode
-			item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)#set this item to have checkbox properties
-			item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)#it gets a checkmark
+			checkbox=True
+			checked=True
 	#<if removalmode>
+
+	#create the thing
+	item = Dbusmenu.Menuitem.new()
+	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
+
+	if checkbox:
+		item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)
+		if checked:
+			item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
+		else:
+			item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
 
 	#attach event handler "check_item_activated"
 	item.connect("item-activated", check_item_activated,location)
