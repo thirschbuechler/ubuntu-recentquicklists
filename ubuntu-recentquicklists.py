@@ -394,7 +394,7 @@ def contains(list, item):
 #sort list by modification date (most recent first)
 def sort(list):
 	lst = list[0]
-	geordList = []
+	sortedList = []
 
 	ageMax = 0
 	for l in list:
@@ -405,13 +405,13 @@ def sort(list):
 	for i in range(len(list)):
 		for l in list:
 			if l.get_modified() >= ageMax:
-				if contains(geordList,l) == False:
+				if contains(sortedList,l) == False:
 					ageMax = l.get_modified()
 					lst = l
-		geordList.append(lst)
+		sortedList.append(lst)
 		ageMax = 0
 
-	return geordList
+	return sortedList
 
 #</sort>
 
@@ -419,13 +419,36 @@ def sort(list):
 #this function gets called if something in a quicklist is clicked
 def check_item_activated(menuitem, a, location):
 #(lookup "pygtk gobject.GObject.connect" to see why this handler looks that way)
-	global manager, appexecs, qlList, logger, pinningmode, removalmode, customappconfigs
+	global manager, appexecs, qlList, logger, pinningmode, removalmode, customappconfigs, moveup, movedown
 	pos = 0
+	separator_pos = -1
 	# menuitem is a Dbusmenu.Menuitem object, it's the entry of the recent file
 	for i in range(len(qlList)):
 		if (menuitem.get_parent() == qlList[i]):#get its parent, aka the launcher under which it's seated
 			pos=i
 			break#exit for loop when element found
+
+	if location.startswith("-"):#determine position of separator
+								#since the separator-indexes aren't saved anywhere
+		item_pos=int(location)*(-1)#to "remove" the dash
+
+		sep_count=0
+		foundit=False
+		k=-1
+		for pinnedentry in customappconfigs[i].pinnedfiles:
+			k=k+1
+
+			if pinnedentry.startswith("-"):
+				sep_count=sep_count+1
+				if (sep_count==item_pos):
+					foundit=True
+					break# break the for
+		if foundit:
+			separator_pos=k
+		else:
+			separator_pos=-1
+	#</if startswith "-">
+
 
 	if location.startswith("pinningswitch"):#pinningswitch pressed
 		if pinningmode:
@@ -434,9 +457,15 @@ def check_item_activated(menuitem, a, location):
 			pinningmode=True
 			removalmode=False
 
+		#per default, don't go into move-submode
+		moveup=False
+		movedown=False
+
 		update()#display list with checkboxes, don't launch anything
 		savepinnedfiles()#also, save the pinned files to the config file
-	elif location.startswith("removalswitch"):#removalswitch pressed
+	#</ if pinningswitch>
+
+	elif location.startswith("removalswitch"):#recentfiles-removalswitch pressed
 		if removalmode:
 			removalmode=False
 		else:
@@ -444,6 +473,58 @@ def check_item_activated(menuitem, a, location):
 			pinningmode=False
 
 		update()#make the list, but with checkboxes and don't launch anything
+		#(no saving occours, as only GTK-Recentfiles are managed)
+	#</ if removalswitch>
+
+
+	elif location.startswith("moveup"):#submenu of pinningmode.. pinningmode stays active
+		if moveup:
+			moveup=False#down already f
+		else:
+			moveup=True
+			movedown=False
+		update()
+	elif location.startswith("movedown"):#submenu of pinningmode.. pinningmode stays active
+		if movedown:
+			movedown=False
+		else:
+			movedown=True
+			moveup=False
+		update()
+	#</moveswitches>
+
+
+	elif pinningmode and (moveup or movedown):#only works for pinnedfiles, not separators
+		try:
+			item=location
+			if not location.startswith("-"):
+				old_index = customappconfigs[i].pinnedfiles.index(item)
+			else:
+				old_index = separator_pos
+
+			if moveup and old_index>0:
+				new_index=old_index-1
+			elif movedown and (old_index+1)!=len(customappconfigs[i].pinnedfiles):
+				new_index=old_index+1
+			else:
+				new_index=old_index#don't do anything if the new index would be out-of-bounds
+
+			if not location.startswith("-"):
+				customappconfigs[i].pinnedfiles.remove(item)
+			else:
+				customappconfigs[i].pinnedfiles.pop(separator_pos)
+			customappconfigs[i].pinnedfiles.insert(new_index, item)
+			#http://stackoverflow.com/questions/3173154/move-an-item-inside-a-list
+
+		except ValueError as v:
+			if not location.startswith("separators++"):
+				criticalx("can't move a recententry, only pinnedentries: disable moving and pin the file first")
+				logger.warning(v)
+			pass
+
+		update()
+	#</pinningmode and moveup/down>
+
 
 	elif (pinningmode):#deal with the checkboxes
 	#(this may break unity if acted on non-checkbox-entries, that's why it's an elif)
@@ -451,42 +532,24 @@ def check_item_activated(menuitem, a, location):
 		if menuitem.property_get_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE) == Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED:
 			#previously active means remove now
 
-			if location.startswith("-"):#seperator
-				location=int(location)*(-1)#to remove the dash, has to be a positive value
-				#print("debug-seperator-delete")
-				#print("looking for %i" %location)
-				seppos=0
-				foundit=False
-				k=-1
-				for pinnedentry in customappconfigs[i].pinnedfiles:
-					k=k+1
-					#print("k is %i" %k)
-					#print(pinnedentry)
+			if separator_pos >0:#means a separator has been found, and toggled
+				customappconfigs[i].pinnedfiles.pop(k)
 
-					if pinnedentry.startswith("-"):
-						seppos=seppos+1
-						#print("here is a sep, seppos++")
-						if (seppos==location):
-							foundit=True
-							break#the for
-				if foundit:
-					#print("popping..")
-					customappconfigs[i].pinnedfiles.pop(k)
-
+			#</ if startswith "-">
 
 			else:#regular file
 				customappconfigs[i].pinnedfiles.remove(location)
+				#(regular files have unique locations)
 
 			##menuitem.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
 			##does not need to be unchecked since it's gone anyway
 			update()#to show changes
 		else:#previously inactive means add
-			if location=="seperators++":
+			if location=="separators++":
 					customappconfigs[i].pinnedfiles.append("-")
 			else:
 				customappconfigs[i].pinnedfiles.append(location)
-				if not location.startswith("-"):#toggle checkmark if it's not a seperator
-					print("checking %s" %location)
+				if not location.startswith("-"):#toggle checkmark if it's not a separator
 					menuitem.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
 
 			update()#to show changes
@@ -542,54 +605,60 @@ def check_item_activated(menuitem, a, location):
 
 #create quicklist entry as dbus menu item (not yet attached to Unity)
 def createItem(name, location, qlnummer):
-	global qlList, appexecs, logger, pinningmode, removalmode
-	checkbox=False
-	checked=False
+	global qlList, appexecs, logger, pinningmode, removalmode, moveup, movedown
+	create_checkbox=False
+	set_checked=False
 
 	name=name.replace("_","__")#escape the underscore with a second one, a single one would make an underline
-	#this only creates an item with a name, the exec association happens in check_item_activated
 
 	if pinningmode and location.startswith("-"):
-		name="---seperator---"#display the seperator as an entry, so it can be clicked and moved up/down
-		checked=True
+		name="---separator---"#display the separator as an entry, so it can be clicked and removed or moved up/down
+		set_checked=True
 
 	if (pinningmode):
-			checkbox=True
+			create_checkbox=True
 
 			if location.startswith("pinningswitch"):
 				#intermission: add these switches
-				createItem("[add seperator]","seperators++",qlnummer)#is inactive, should be added fine when clicked
+				createItem("[add separator]","separators++",qlnummer)#is inactive, should be added fine when clicked
 
 				#do:   http://stackoverflow.com/questions/3173154/move-an-item-inside-a-list
 				createItem("[move up]","moveup",qlnummer)
 				createItem("[move down]","movedown",qlnummer)
 
 				#continue, add the pinningswitch, with:
-				checked=True
+				set_checked=True
+
+			elif location.startswith("moveup") and moveup:
+				set_checked=True
+			elif location.startswith("movedown") and movedown:
+				set_checked=True
+
 
 			else: #if its a recentfiles-entry or another switch
 				if not location.startswith("-"):
-					checked=False
+					set_checked=False
 				for j in range(len(customappconfigs[qlnummer].pinnedfiles)):
 					if customappconfigs[qlnummer].pinnedfiles[j].startswith(location):#if this entry is pinned
-						checked=True
+						set_checked=True
 	#<if pinningmode>
 
 
 	elif (removalmode):
 		if location.startswith("removalswitch"):#is checked in removalmode
-			checkbox=True
-			checked=True
+			create_checkbox=True
+			set_checked=True
 	#<if removalmode>
 
 	#create the thing
+	#(makes an item with a name, the exec association happens in check_item_activated)
 	item = Dbusmenu.Menuitem.new()
 	item.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
 	item.property_set (Dbusmenu.MENUITEM_PROP_LABEL, name)
 
-	if checkbox:
-		item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)
-		if checked:
+	if create_checkbox:
+		item.property_set (Dbusmenu.MENUITEM_PROP_TOGGLE_TYPE, Dbusmenu.MENUITEM_TOGGLE_CHECK)#have the checkbox-property
+		if set_checked:
 			item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
 		else:
 			item.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
@@ -602,6 +671,15 @@ def createItem(name, location, qlnummer):
 		logger.info("added "+location)
 
 #</createItem>
+
+
+def createSeparator(index):
+	global qlList
+	separator = Dbusmenu.Menuitem.new ();
+	separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
+	separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
+	qlList[index].child_append (separator)
+#</createSeparator>
 
 
 def update(a=None):
@@ -676,15 +754,12 @@ def update(a=None):
 	#</ i in RecentFiles>
 
 
-	#add seperator between recentfiles and pinnedfiles
+	#add separator between recentfiles and pinnedfiles
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0 :
-			if (entriesperList[i] != 0):#only add seperator if there are "normal" non-pinned recentfiles above
+			if (entriesperList[i] != 0 ):#only add separator if there are "normal" non-pinned recentfiles above
 				##if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):#if there was no pinning switch this should be checked
-				separator = Dbusmenu.Menuitem.new ();
-				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-				qlList[i].child_append (separator)
+				createSeparator(i)
 	#</ i in RecentFiles>
 
 
@@ -696,21 +771,18 @@ def update(a=None):
 			for j in range(count):
 				tmp = customappconfigs[i].pinnedfiles[j]
 				head, tail = os.path.split(tmp)
-				if tmp.startswith("-"):#is a pinnedfiles-seperator
+				if tmp.startswith("-"):#is a pinnedfiles-separator
 					if not pinningmode:
-								separator = Dbusmenu.Menuitem.new ();
-								separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-								separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-								qlList[i].child_append (separator)
+						createSeparator(i)
 					else:
 						seps=seps+1
-						#memorizes multiple seperator-positions..
-						#only concerns seperators which seperate pinnedfiles from other pinnedfiles
+						#memorizes multiple separator-positions..
+						#only concerns separators which seperate pinnedfiles from other pinnedfiles
 						createItem("-","-%i" %seps,i)
-
 				#</if startswith "-">
+
 				elif tmp=="":
-					logger.info("encounter: a stray entry")
+					logger.info("encounter: a stray entry: fight!")
 					logger.info("ommitting is very effective")
 				elif not showfullpath:
 					createItem(tail, head+"/"+tail,i)#name, fullpath
@@ -718,12 +790,9 @@ def update(a=None):
 					createItem(head+"/"+tail, head+"/"+tail,i)#fullpath, fullpath
 				entriesperList[i]=entriesperList[i]+1
 
-				#add seperator between pinned files and switches (after last element)
-				if (j==count-1):
-					separator = Dbusmenu.Menuitem.new ();
-					separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-					separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-					qlList[i].child_append (separator)
+				#add separator between pinned files and switches (after last element)
+				if (j==count-1) and count>0:
+					createSeparator(i)
 				#</ j in customappconfigs>
 		#</ i in customappconfigs>
 
@@ -736,14 +805,11 @@ def update(a=None):
 		createItem("[remove recent-entries]", "removalswitch",i)
 
 
-	#add seperator between switches and launcheractions if needed
+	#add separator between switches and launcheractions if needed
 	for i in range(len(RecentFiles)):
 		#if len(RecentFiles[i]) != 0:
 			if (otherlauncheractionsexist[i]==1):
-				separator = Dbusmenu.Menuitem.new ();
-				separator.property_set (Dbusmenu.MENUITEM_PROP_TYPE, Dbusmenu.CLIENT_TYPES_SEPARATOR)
-				separator.property_set_bool (Dbusmenu.MENUITEM_PROP_VISIBLE, True)
-				qlList[i].child_append (separator)
+				createSeparator(i)
 	#</ i in RecentFiles>
 
 #</update>
@@ -764,12 +830,14 @@ def reg_ql():#register quicklist
 #---------------------------------  main  --------------------------------
 def main():
 	global manager, onlycritical, verboselogging, Path, logger
-	global qlList, pinningmode, removalmode
+	global qlList, pinningmode, removalmode, moveup, movedown
 	#global variables: not the best, but I don't like to write/have a 1000 params in each fct call either..
 
 	print("entering main()")
 	pinningmode=False
 	removalmode=False
+	moveup=False
+	movedown=False
 
 	notify.init("urq-APPINDICATOR_ID")#APPINDICATOR_ID for bubble notifications
 	Path=os.path.dirname(os.path.abspath(__file__))
@@ -807,13 +875,13 @@ def main():
 		criticalx("Gtk Recentmanager FAILED to load!!","Abandon Ship!")
 
 
-	get_conv_apps()
+	get_conv_apps()#get the launchers, and the associated exec-entries
 
 	appconfigread()
 
 	qlList = []
 
-	update()
+	update()#get recentfiles and pinnedfiles and make the ql
 
 	reg_ql()#append the dbus objects to the unity launcher entries
 
