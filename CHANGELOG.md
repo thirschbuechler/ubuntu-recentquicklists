@@ -6,11 +6,15 @@
 * now using ~./local dir for .desktop files primarily instead of the /usr one
 * added gi-require-statements to reduce terminal-output garbage
 * added recent-files removal switch (won't remove pinned files, use the pinningswitch for that)
-* (fix: recentfiles-removalmode reported removal-failure on success)
 * (recentfiles-removalmode hides pinnedfiles, as they can't be removed there anyway)
 * added separator between pinnedfiles and pinningswitch
 * filepinning-separator option: In urq.conf, a separator can be added via "-". Example (FILE1, separator, FILE2):
  * pinnedfiles = ;FILE1;-;FILE2
+
+##fixed:
+ - recentfiles-removalmode reported removal-failure on success
+ - separators weren't removable in pinnedfiles-menu
+ - recentfiles with symbolic-link in path (i.e. accessed via a folder-shortcut) weren't removable
 
 #V1.2.2
 * fixed a pinningfile-issue which may prevent pinnedfiles to be saved to config-file

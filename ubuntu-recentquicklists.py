@@ -532,8 +532,8 @@ def check_item_activated(menuitem, a, location):
 		if menuitem.property_get_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE) == Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED:
 			#previously active means remove now
 
-			if separator_pos >0:#means a separator has been found, and toggled
-				customappconfigs[i].pinnedfiles.pop(k)
+			if separator_pos >-1:#means a separator has been found, and toggled
+				customappconfigs[i].pinnedfiles.pop(separator_pos)
 
 			#</ if startswith "-">
 
@@ -557,10 +557,16 @@ def check_item_activated(menuitem, a, location):
 	elif (removalmode):
 		URI=""
 		raw_list = manager.get_items()
-		for item in raw_list:
-			if (item.get_uri_display()==location):
-				URI=item.get_uri()
 
+		if resolvesymlinks:
+			for item in raw_list:
+				if (os.path.realpath(item.get_uri_display())==location):
+					URI=item.get_uri()
+		else:
+			for item in raw_list:
+				if (item.get_uri_display()==location):
+					URI=item.get_uri()
+		#</if-else resolvesymlinks>
 
 		if not (URI==""):
 			if Gtk.RecentManager.remove_item(manager,URI):
@@ -706,7 +712,7 @@ def update(a=None):
 	entriesperList = [] #counter per launcher-slot (to make maxentriesperlist happen)
 
 	for i in range(len(mimetypes)):
-		RecentFiles.append([])#initialize emtpy RecentFiles
+		RecentFiles.append([])#initialize empty RecentFiles
 		entriesperList.append(0)#and entriesperList
 
 
@@ -760,6 +766,7 @@ def update(a=None):
 			if (entriesperList[i] != 0 ):#only add separator if there are "normal" non-pinned recentfiles above
 				##if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):#if there was no pinning switch this should be checked
 				createSeparator(i)
+				##createItem("---separator rf-pf---","/asdf",i)#debug-separator
 	#</ i in RecentFiles>
 
 
@@ -793,6 +800,7 @@ def update(a=None):
 				#add separator between pinned files and switches (after last element)
 				if (j==count-1) and count>0:
 					createSeparator(i)
+					##createItem("---separator pf-sw---","/asdf",i)#debug-separator
 				#</ j in customappconfigs>
 		#</ i in customappconfigs>
 
@@ -810,6 +818,7 @@ def update(a=None):
 		#if len(RecentFiles[i]) != 0:
 			if (otherlauncheractionsexist[i]==1):
 				createSeparator(i)
+				##createItem("---separator sw-la---","/asdf",i)#debug-separator
 	#</ i in RecentFiles>
 
 #</update>
