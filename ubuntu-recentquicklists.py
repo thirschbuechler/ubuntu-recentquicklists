@@ -760,17 +760,29 @@ def update(a=None):
 	#</ i in RecentFiles>
 
 
-	#add separator between recentfiles and pinnedfiles
+	#add separator between recentfiles and pinnedfiles/switches (if no pinnedfiles)
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0 :
 			if (entriesperList[i] != 0 ):#only add separator if there are "normal" non-pinned recentfiles above
 				##if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):#if there was no pinning switch this should be checked
 				createSeparator(i)
-				##createItem("---separator rf-pf---","/asdf",i)#debug-separator
+				##createItem("---separator rf-pf/sw---","/asdf",i)#debug-separator
 	#</ i in RecentFiles>
 
 
 	#------------#   add pinned files	  #------------#
+	#cleanup empty entries
+	for i in range(len(customappconfigs)):
+		count=len(customappconfigs[i].pinnedfiles)
+		defects=[]
+		for j in range(count):
+			if tmp=="":
+				defects.append(j)
+		for j in range(len(defects)):
+				customappconfigs[i].pinnedfiles.pop(j)
+	#</cleanup empty entries>
+
+	#add entries
 	if not removalmode:
 		for i in range(len(customappconfigs)):
 			count=len(customappconfigs[i].pinnedfiles)
@@ -784,13 +796,10 @@ def update(a=None):
 					else:
 						seps=seps+1
 						#memorizes multiple separator-positions..
-						#only concerns separators which seperate pinnedfiles from other pinnedfiles
+						#only concerns separators which separate pinnedfiles from other pinnedfiles
 						createItem("-","-%i" %seps,i)
 				#</if startswith "-">
 
-				elif tmp=="":
-					logger.info("encounter: a stray entry: fight!")
-					logger.info("ommitting is very effective")
 				elif not showfullpath:
 					createItem(tail, head+"/"+tail,i)#name, fullpath
 				else:

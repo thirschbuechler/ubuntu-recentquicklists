@@ -15,6 +15,7 @@
  - recentfiles-removalmode reported removal-failure on success
  - separators weren't removable in pinnedfiles-menu
  - recentfiles with symbolic-link in path (i.e. accessed via a folder-shortcut) weren't removable
+ - minor fix: empty pinnedfiles-entry caused ugly double auto-separators
 
 #V1.2.2
 * fixed a pinningfile-issue which may prevent pinnedfiles to be saved to config-file
