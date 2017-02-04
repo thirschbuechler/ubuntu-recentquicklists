@@ -776,10 +776,11 @@ def update(a=None):
 		count=len(customappconfigs[i].pinnedfiles)
 		defects=[]
 		for j in range(count):
-			if tmp=="":
+			tmp = customappconfigs[i].pinnedfiles[j]
+			if tmp==" " or not tmp:
 				defects.append(j)
 		for j in range(len(defects)):
-				customappconfigs[i].pinnedfiles.pop(j)
+			customappconfigs[i].pinnedfiles.pop(j)
 	#</cleanup empty entries>
 
 	#add entries
