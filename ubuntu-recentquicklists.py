@@ -103,6 +103,7 @@ class app_config_entry:
 
 	def __init__(self):#http://www.tutorialspoint.com/python/python_classes_objects.htm
 		self.pinnedfiles = []#http://stackoverflow.com/questions/1680528/how-do-i-avoid-having-python-class-data-shared-among-instances
+
 		self.maxentriesperlist = -1
 
 
@@ -138,13 +139,18 @@ def appconfigread():#https://docs.python.org/3/library/configparser.html
 			if (config.has_option(appfiles[i],"maxentriesperlist")):
 				customappconfigs[i].maxentriesperlist=config.getint(appfiles[i],"maxentriesperlist")
 			if (config.has_option(appfiles[i],"pinnedfiles")):
+
 				tmp = []#is a list because semiarraytolist only handles lists
 				tmp.append(config.get(appfiles[i],"pinnedfiles",raw=True))
+
 				#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
 				customappconfigs[i].pinnedfiles=(semiarraytolist(tmp)[0])
 
+
 		for j in range(len(customappconfigs[i].pinnedfiles)):
+
 			customappconfigs[i].pinnedfiles[j]=os.path.expanduser(customappconfigs[i].pinnedfiles[j])#turn tildes ('~') into absolute paths
+
 		#</forloop j>
 
 		if (customappconfigs[i].maxentriesperlist==-1):#if there was no setting
@@ -185,6 +191,7 @@ def excluded(launcher_x):#https://docs.python.org/3/library/configparser.html
 
 
 def savepinnedfiles():#customappconfigwrite
+
 	global Path, appfiles
 	global maxentriesperlist
 	global customappconfigs, mimetypes
@@ -203,18 +210,25 @@ def savepinnedfiles():#customappconfigwrite
 	for i in range(len(appfiles)):#for each launcher
 		tmp = ""
 		for file in customappconfigs[i].pinnedfiles:
+
 			if len(file)>0:
 					tmp=tmp+";"+file#collect all the pinned files
 
 		if len(tmp)>0:
 			config.set(appfiles[i],"pinnedfiles",tmp)
+
 			tmp = ""
 			logger.info("saved pinnedfiles of launcher %s" %(appfiles[i]))
 
+
 		else:#0 pinnedfiles
+
 			if (config.has_section(appfiles[i]) and config.has_option(appfiles[i],"pinnedfiles")):
+
 				config.remove_option(appfiles[i],"pinnedfiles")
+
 				logger.info("launcher %s has 0 pinnedfiles" %appfiles[i])
+
 
 
 	cfile=Path+'/'+"urq.conf"
@@ -222,6 +236,7 @@ def savepinnedfiles():#customappconfigwrite
 		config.write(configfile)
 
 #</savepinnedfiles>
+
 
 
 def criticalx(title,msg=""):#displays bubble and loggs as well
@@ -322,8 +337,19 @@ def get_apps():
 								#for adding kde4-stuff it to unity taskbar, that needs to be reset, tough
 								curr_launcher[i]=curr_launcher[i].replace("kde4/","kde4-")
 								launchers.append(curr_launcher[i])
-								if ( config.has_option("Desktop Entry","Actions") or config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts") ):
+								if config.has_option("Desktop Entry","Actions") :
 									otherlauncheractionsexist.append(1)
+								elif config.has_option("Desktop Entry","X-Ayatana-Desktop-Shortcuts"):
+									tmp = []#is a list because semiarraytolist only handles lists
+									tmp.append(config.get("Desktop Entry","X-Ayatana-Desktop-Shortcuts",raw=True))
+									#raw-->True ignores special characters (%U, %F, ..) and imports them "as-is"
+									XAyatanaDS = []
+									XAyatanaDS = (semiarraytolist(tmp)[0])
+									if (XAyatanaDS == ["Screen", "Window"] or XAyatanaDS == ["Window", "Screen"]) :
+										otherlauncheractionsexist.append(0)#something like SMPlayer where no additional separator is needed
+									else:
+										otherlauncheractionsexist.append(1)#separator probably needed
+
 								else:
 									otherlauncheractionsexist.append(0)
 						#</if: has option desktop-entry exec>
@@ -436,6 +462,7 @@ def check_item_activated(menuitem, a, location):
 		foundit=False
 		k=-1
 		for pinnedentry in customappconfigs[i].pinnedfiles:
+
 			k=k+1
 
 			if pinnedentry.startswith("-"):
@@ -463,6 +490,7 @@ def check_item_activated(menuitem, a, location):
 
 		update()#display list with checkboxes, don't launch anything
 		savepinnedfiles()#also, save the pinned files to the config file
+
 	#</ if pinningswitch>
 
 	elif location.startswith("removalswitch"):#recentfiles-removalswitch pressed
@@ -495,25 +523,31 @@ def check_item_activated(menuitem, a, location):
 
 
 	elif pinningmode and (moveup or movedown):#only works for pinnedfiles, not separators
+
 		try:
 			item=location
 			if not location.startswith("-"):
 				old_index = customappconfigs[i].pinnedfiles.index(item)
+
 			else:
 				old_index = separator_pos
 
 			if moveup and old_index>0:
 				new_index=old_index-1
 			elif movedown and (old_index+1)!=len(customappconfigs[i].pinnedfiles):
+
 				new_index=old_index+1
 			else:
 				new_index=old_index#don't do anything if the new index would be out-of-bounds
 
 			if not location.startswith("-"):
 				customappconfigs[i].pinnedfiles.remove(item)
+
 			else:
 				customappconfigs[i].pinnedfiles.pop(separator_pos)
+
 			customappconfigs[i].pinnedfiles.insert(new_index, item)
+
 			#http://stackoverflow.com/questions/3173154/move-an-item-inside-a-list
 
 		except ValueError as v:
@@ -535,10 +569,12 @@ def check_item_activated(menuitem, a, location):
 			if separator_pos >-1:#means a separator has been found, and toggled
 				customappconfigs[i].pinnedfiles.pop(separator_pos)
 
+
 			#</ if startswith "-">
 
 			else:#regular file
 				customappconfigs[i].pinnedfiles.remove(location)
+
 				#(regular files have unique locations)
 
 			##menuitem.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_UNCHECKED)
@@ -547,8 +583,10 @@ def check_item_activated(menuitem, a, location):
 		else:#previously inactive means add
 			if location=="separators++":
 					customappconfigs[i].pinnedfiles.append("-")
+
 			else:
 				customappconfigs[i].pinnedfiles.append(location)
+
 				if not location.startswith("-"):#toggle checkmark if it's not a separator
 					menuitem.property_set_int (Dbusmenu.MENUITEM_PROP_TOGGLE_STATE, Dbusmenu.MENUITEM_TOGGLE_STATE_CHECKED)
 
@@ -645,7 +683,9 @@ def createItem(name, location, qlnummer):
 				if not location.startswith("-"):
 					set_checked=False
 				for j in range(len(customappconfigs[qlnummer].pinnedfiles)):
+
 					if customappconfigs[qlnummer].pinnedfiles[j].startswith(location):#if this entry is pinned
+
 						set_checked=True
 	#<if pinningmode>
 
@@ -745,7 +785,9 @@ def update(a=None):
 					head, tail = os.path.split(tmp)
 						##alternatively: tail=rf.get_short_name ()
 					for j in range(len(customappconfigs[i].pinnedfiles)):#is this recent file queued to be pinned anyway
+
 						if customappconfigs[i].pinnedfiles[j]==tmp:
+
 							pinned=True
 
 					if (pinned==False):#if not queued then add it
@@ -761,10 +803,12 @@ def update(a=None):
 
 
 	#add separator between recentfiles and pinnedfiles/switches (if no pinnedfiles)
+
 	for i in range(len(RecentFiles)):
 		if len(RecentFiles[i]) != 0 :
 			if (entriesperList[i] != 0 ):#only add separator if there are "normal" non-pinned recentfiles above
 				##if (customappconfigs[i].pinnedfiles and customappconfigs[i].maxentriesperlist!=0):#if there was no pinning switch this should be checked
+
 				createSeparator(i)
 				##createItem("---separator rf-pf/sw---","/asdf",i)#debug-separator
 	#</ i in RecentFiles>
@@ -774,30 +818,37 @@ def update(a=None):
 	#cleanup empty entries
 	for i in range(len(customappconfigs)):
 		count=len(customappconfigs[i].pinnedfiles)
+
 		defects=[]
 		for j in range(count):
 			tmp = customappconfigs[i].pinnedfiles[j]
+
 			if tmp==" " or not tmp:
 				defects.append(j)
 		for j in range(len(defects)):
 			customappconfigs[i].pinnedfiles.pop(j)
+
 	#</cleanup empty entries>
 
 	#add entries
 	if not removalmode:
 		for i in range(len(customappconfigs)):
 			count=len(customappconfigs[i].pinnedfiles)
+
 			seps=0
 			for j in range(count):
 				tmp = customappconfigs[i].pinnedfiles[j]
+
 				head, tail = os.path.split(tmp)
 				if tmp.startswith("-"):#is a pinnedfiles-separator
+
 					if not pinningmode:
 						createSeparator(i)
 					else:
 						seps=seps+1
 						#memorizes multiple separator-positions..
 						#only concerns separators which separate pinnedfiles from other pinnedfiles
+
 						createItem("-","-%i" %seps,i)
 				#</if startswith "-">
 
@@ -901,6 +952,7 @@ def main():
 	qlList = []
 
 	update()#get recentfiles and pinnedfiles and make the ql
+
 
 	reg_ql()#append the dbus objects to the unity launcher entries
 
