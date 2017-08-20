@@ -1,5 +1,6 @@
 ##currently new master-branch features:
 * now requiring gir1.2-rsvg-2.0 !!!
+* updated to recognize X-Ayatana-Desktop-Shortcuts "Window & Screen" don't need a separator, like SMPlayer.desktop
 * pinnedfiles now can be moved up/down within the UI
 * separators now can be added and removed via the UI
 * added package-detection at startup
