@@ -5,6 +5,8 @@ It adds recent files (you can choose how many days old they might be) to the rig
 
 ![alt tag](urq-screenie.png)
 
+Please mind that the Wiki only supports the latest release, masterbranch-changes are documented in Changelog.md.
+
 Installation & Autorun:
 see https://github.com/thirschbuechler/ubuntu-recentquicklists/wiki/Installation
 (in short: download/clone anywhere, make ubuntu-recentquicklists.py and install.sh executable, run install.sh)
